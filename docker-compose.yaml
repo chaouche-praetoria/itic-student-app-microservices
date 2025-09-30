@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  mysql-auth:
+    image: mysql:8.0
+    container_name: mysql-auth
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: auth_user
+      MYSQL_PASSWORD: auth_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_auth_data:/var/lib/mysql
+    networks:
+      - itic-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  mysql-ypareo:
+    image: mysql:8.0
+    container_name: mysql-ypareo
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ypareo_db
+      MYSQL_USER: ypareo_user
+      MYSQL_PASSWORD: ypareo_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_ypareo_data:/var/lib/mysql
+    networks:
+      - itic-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  mysql-gamification:
+    image: mysql:8.0
+    container_name: mysql-gamification
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: gamification_db
+      MYSQL_USER: game_user
+      MYSQL_PASSWORD: game_password
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_gamification_data:/var/lib/mysql
+    networks:
+      - itic-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  mysql-wallet:
+    image: mysql:8.0
+    container_name: mysql-wallet
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wallet_db
+      MYSQL_USER: wallet_user
+      MYSQL_PASSWORD: wallet_password
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_wallet_data:/var/lib/mysql
+    networks:
+      - itic-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - itic-network
+    command: redis-server --appendonly yes
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    environment:
+      PMA_ARBITRARY: 1
+      PMA_HOST: mysql-auth
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8090:80"
+    networks:
+      - itic-network
+    depends_on:
+      - mysql-auth
+      - mysql-ypareo
+      - mysql-gamification
+      - mysql-wallet
+
+volumes:
+  mysql_auth_data:
+  mysql_ypareo_data:
+  mysql_gamification_data:
+  mysql_wallet_data:
+  redis_data:
+
+networks:
+  itic-network:
+    driver: bridge
