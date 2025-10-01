@@ -3,15 +3,19 @@ package cloud.praetoria.auth.entities;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -31,23 +35,27 @@ import lombok.ToString;
 @EntityListeners(AuditingEntityListener.class)
 public class User {
     
-    @Id
+	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    // on récupère d'ypareo
     @Column(name = "ypareo_id", unique = true, nullable = false, length = 50)
     @NotBlank(message = "Ypareo ID is required")
     @Size(min = 3, max = 50, message = "Ypareo ID must be between 3 and 50 characters")
     private String ypareoId;
     
+    // on récupère d'ypareo
     @Column(name = "email", unique = true, length = 150)
     @Email(message = "Email should be valid")
     private String email;
     
+    // on récupère d'ypareo
     @Column(name = "first_name", length = 100)
     @Size(max = 100, message = "First name must not exceed 100 characters")
     private String firstName;
     
+    // on récupère d'ypareo
     @Column(name = "last_name", length = 100)
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
@@ -56,6 +64,10 @@ public class User {
     @NotBlank(message = "Password is required")
     @ToString.Exclude
     private String password;
+    
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", nullable = false)
+    private Role role;
     
     @Column(name = "is_first_login")
     @Builder.Default
@@ -92,5 +104,10 @@ public class User {
             return firstName + " " + lastName;
         }
         return ypareoId;
+    }
+    
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
     }
 }
