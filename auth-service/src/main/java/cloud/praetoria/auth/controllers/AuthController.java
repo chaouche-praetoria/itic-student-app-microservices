@@ -34,11 +34,11 @@ public class AuthController {
     
     @PostMapping("/register")
     public ResponseEntity<LoginResponseDto> register(@Valid @RequestBody CreatePasswordRequestDto request) {
-        log.info("Registration request received for Ypareo ID: {}", request.getYpareoId());
+        log.info("Registration request received for Ypareo Login: {}", request.getYpareoLogin());
         
         try {
         	LoginResponseDto response = authService.registerStudent(request);
-            log.info("Student registered successfully: {}", request.getYpareoId());
+            log.info("Student registered successfully: {}", request.getYpareoLogin());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
             log.warn("Registration failed - Invalid data: {}", e.getMessage());
@@ -47,21 +47,21 @@ public class AuthController {
             log.warn("Registration failed - Student already exists: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
-            log.error("Unexpected error during registration for: {}", request.getYpareoId(), e);
+            log.error("Unexpected error during registration for: {}", request.getYpareoLogin(), e);
             throw new RuntimeException("Registration failed. Please try again later.");
         }
     }
     
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
-        log.info("Login request received for Ypareo ID: {}", request.getYpareoId());
+        log.info("Login request received for Ypareo ID: {}", request.getYpareoLogin());
         
         try {
         	LoginResponseDto response = authService.authenticateStudent(request);
-            log.info("Student authenticated successfully: {}", request.getYpareoId());
+            log.info("Student authenticated successfully: {}", request.getYpareoLogin());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.warn("Login failed for Ypareo ID: {} - {}", request.getYpareoId(), e.getMessage());
+            log.warn("Login failed for Ypareo ID: {} - {}", request.getYpareoLogin(), e.getMessage());
             throw e;
         }
     }
