@@ -16,6 +16,7 @@ public class UserInfo {
 
 	private Long id;
 	private String ypareoId;
+	private String ypareoLogin;
 	private String email;
 	private String firstName;
 	private String lastName;

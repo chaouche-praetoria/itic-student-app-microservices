@@ -14,11 +14,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class LoginRequestDto {
     
-    @NotBlank(message = "Ypareo ID is required")
-    @Size(min = 3, max = 50, message = "Ypareo ID must be between 3 and 50 characters")
-    private String ypareoId;
+    @NotBlank(message = Constantes.YPAREO_LOGIN)
+    @Size(min = 3, max = 50, message = Constantes.YPAREO_LOGIN_SIZE)
+    private String ypareoLogin;
     
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @NotBlank(message = Constantes.PASSWORD_REQUIRED)
+    @Size(min = 8, message = Constantes.PASSWORD_SIZE)
     private String password;
 }

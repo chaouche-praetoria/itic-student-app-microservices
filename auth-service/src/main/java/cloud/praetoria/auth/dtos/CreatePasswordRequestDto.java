@@ -15,9 +15,9 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreatePasswordRequestDto {
     
-    @NotBlank(message = Constantes.YPAREO_ID_REQUIRED)
+    @NotBlank(message = Constantes.YPAREO_LOGIN)
     @Size(min = 3, max = 50, message = Constantes.YPAREO_ID_SIZE)
-    private String ypareoId;
+    private String ypareoLogin;
     
     @NotBlank(message = Constantes.PASSWORD_REQUIRED)
     @Size(min = 8, max = 50, message = Constantes.PASSWORD_SIZE)

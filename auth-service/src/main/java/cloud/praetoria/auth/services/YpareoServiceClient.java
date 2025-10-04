@@ -31,20 +31,20 @@ public class YpareoServiceClient {
 
 	@Retry(name = YPAREO_CB, fallbackMethod = "fallbackGetStudentInfo")
 	@CircuitBreaker(name = YPAREO_CB, fallbackMethod = "fallbackGetStudentInfo")
-	public StudentInfo getStudentInfo(String ypareoId) {
-			log.info("Fetching student info from Ypareo API Service for ID: {}", ypareoId);
+	public StudentInfo getStudentInfo(String ypareoLogin) {
+			log.info("Fetching student info from Ypareo API Service for login: {}", ypareoLogin);
 
-			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/students/{ypareoId}", ypareoId).retrieve()
+			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/students/{ypareoLogin}", ypareoLogin).retrieve()
 					.bodyToMono(StudentInfo.class).timeout(Duration.ofSeconds(timeoutSeconds)).doOnSuccess(student -> {
 						if (student != null) {
 							log.info("Successfully retrieved student: {} - {}", student.getYpareoId(),
 									student.getFirstName() + " " + student.getLastName());
 						} else {
-							log.warn("No student data returned for ID: {}", ypareoId);
+							log.warn("No student data returned for Login: {}", ypareoLogin);
 						}
 					}).onErrorResume(WebClientResponseException.class, ex -> {
 						if (ex.getStatusCode().value() == 404) {
-							log.warn("Student not found in Ypareo: {}", ypareoId);
+							log.warn("Student not found in Ypareo: {}", ypareoLogin);
 							return Mono.empty();
 						} else {
 							log.error("Error calling Ypareo API Service: {} - {}", ex.getStatusCode(), ex.getMessage());

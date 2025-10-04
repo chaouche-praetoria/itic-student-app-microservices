@@ -47,6 +47,12 @@ public class User {
     private String ypareoId;
     
     // on récupère d'ypareo
+    @Column(name = "ypareo_login", unique = true, nullable = false, length = 50)
+    @NotBlank(message = Constantes.YPAREO_LOGIN)
+    @Size(min = 3, max = 50, message = Constantes.YPAREO_LOGIN_SIZE)
+    private String ypareoLogin;
+    
+    // on récupère d'ypareo
     @Column(name = "email", unique = true, length = 150)
     @Email(message = "Email should be valid")
     private String email;
