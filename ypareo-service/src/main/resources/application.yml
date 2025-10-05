@@ -1,0 +1,301 @@
+# =========================================
+# YPAREO SERVICE CONFIGURATION
+# =========================================
+server:
+  port: 8082
+  servlet:
+    context-path: /api/ypareo
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+spring:
+  application:
+    name: ypareo-service
+
+  # =========================================
+  # BASE DE DONNÉES MYSQL
+  # =========================================
+  datasource:
+    url: jdbc:mysql://localhost:3306/ypareo_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Europe/Paris
+    username: root
+    password:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      auto-commit: false
+
+  # =========================================
+  # JPA / HIBERNATE
+  # =========================================
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+        cache:
+          use_second_level_cache: false
+    open-in-view: false
+
+  # =========================================
+  # REDIS CACHE
+  # =========================================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      client-type: lettuce
+      database: 2
+      timeout: 2s
+
+  cache:
+    type: redis
+    redis:
+      time-to-live: 5m
+      cache-null-values: false
+      key-prefix: "ypareo:"
+      use-key-prefix: true
+
+# =========================================
+# EUREKA CLIENT
+# =========================================
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+    registry-fetch-interval-seconds: 30
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+    metadata-map:
+      version: 1.0.0
+      description: "Service de gestion des données Ypareo"
+
+# =========================================
+# SWAGGER / OPENAPI
+# =========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+  show-actuator: true
+  packages-to-scan: cloud.praetoria.ypareoservice.controller
+
+# =========================================
+# RESILIENCE4J
+# =========================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      ypareo-api:
+        register-health-indicator: true
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 5
+        sliding-window-size: 10
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    instances:
+      ypareo-api:
+        max-attempts: 3
+        wait-duration: 2s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+  timelimiter:
+    instances:
+      ypareo-api:
+        timeout-duration: 10s
+        cancel-running-future: true
+
+# =========================================
+# ACTUATOR / MANAGEMENT
+# =========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: WHEN_AUTHORIZED
+      show-components: WHEN_AUTHORIZED
+  health:
+    circuitbreakers:
+      enabled: true
+    redis:
+      enabled: true
+    db:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# =========================================
+# LOGGING
+# =========================================
+logging:
+  level:
+    cloud.praetoria.ypareoservice: DEBUG
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    io.github.resilience4j: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  file:
+    name: logs/ypareo-service.log
+
+# =========================================
+# YPAREO API CONFIGURATION
+# =========================================
+ypareo:
+  api:
+    # Base URL REST ITIC Paris (API v1)
+    base-url: https://iticparis.ymag.cloud/index.php/r/v1
+    timeout: 30s
+    max-retries: 3
+    retry-delay: 1s
+  auth:
+    # Authentification par token (X-Auth-Token)
+    token: ${YPAREO_TOKEN:}
+  cache:
+    # faudra ptet qu'on ajuste les durées en fonction des retours
+    students-ttl: 30m
+    schedules-ttl: 5m
+    courses-ttl: 1h
+    teachers-ttl: 30m
+    groups-ttl: 1h
+    default-ttl: 5m
+  sync:
+    enabled: true
+    cron: "0 0 2 * * *"   # on récupère à 2h du matin
+    initial-delay: 60s
+    fixed-rate: 1h
+    batch-size: 100
+
+# =========================================
+# JWT CONFIGURATION
+# =========================================
+jwt:
+  secret: ${JWT_SECRET:your-super-secret-key-must-be-at-least-256-bits-long}
+  expiration: 24h
+  refresh-expiration: 7d
+
+# =========================================
+# APPLICATION METADATA
+# =========================================
+app:
+  version: 1.0.0
+  description: "Service de gestion des données Ypareo pour ITIC Paris"
+  contact:
+    name: "ITIC Development Team"
+    email: "dev@itic-paris.com"
+
+---
+
+# =========================================
+# PROFIL DÉVELOPPEMENT
+# =========================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+logging:
+  level:
+    cloud.praetoria.ypareoservice: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate: DEBUG
+
+ypareo:
+  api:
+    base-url: https://demo-ypareo-instance.com/api
+  sync:
+    enabled: false  # Pas de sync auto en dev
+
+---
+
+# =========================================
+# PROFIL PRODUCTION
+# =========================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://prod-mysql:3306/ypareo_db}
+    username: ${DATABASE_USERNAME:ypareo_user}
+    password: ${DATABASE_PASSWORD:secure_password}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+
+  data:
+    redis:
+      host: ${REDIS_HOST:prod-redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:secure_redis_password}
+
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+
+logging:
+  level:
+    cloud.praetoria.ypareoservice: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+  file:
+    name: /var/log/ypareo-service/application.log
+
+ypareo:
+  api:
+    base-url: https://iticparis.ymag.cloud/index.php/r/v1
+    timeout: 15s
+  auth:
+    token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE3NTkwOTY4MDAsImNsdCI6IkFEMjg5NThBLTA2REItNDQ1OS1BOTkzLUM0QjA4MTAwNkUyOSJ9.IE8Yjs6Fqh45hQ9tz8iLQTDwg5dEIkoSrtgLg17bdkw
+  sync:
+    enabled: true
+    fixed-rate: 30m  
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
