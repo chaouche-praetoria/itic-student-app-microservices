@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -13,6 +14,7 @@ import cloud.praetoria.ypareo.dtos.YpareoCourseDto;
 import cloud.praetoria.ypareo.dtos.YpareoStudentDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 @Service
 @RequiredArgsConstructor
@@ -31,9 +33,13 @@ public class YpareoClient {
         log.info("Calling YParéo API: /r/v1/utilisateur/apprenants");
 
         Map<String, YpareoStudentDto> responseMap = webClient.get()
-                .uri(baseUrl + "/r/v1/utilisateur/apprenants")
+                .uri(baseUrl + "/utilisateur/apprenants")
                 .header("X-Auth-Token", xAuthToken)
                 .retrieve()
+                .onStatus(HttpStatusCode::is5xxServerError, resp ->
+                        resp.bodyToMono(String.class).defaultIfEmpty("")
+                                .flatMap(body -> Mono.error(new RuntimeException(
+                                        "Server Error " + resp.statusCode().value() + ": " + body))))
                 .bodyToMono(new ParameterizedTypeReference<Map<String, YpareoStudentDto>>() {})
                 .block();
 

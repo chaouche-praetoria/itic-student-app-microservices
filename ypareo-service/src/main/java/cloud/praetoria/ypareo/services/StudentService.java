@@ -2,8 +2,7 @@ package cloud.praetoria.ypareo.services;
 
 
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import org.springframework.cache.annotation.CacheEvict;
@@ -34,12 +33,26 @@ public class StudentService {
         log.info("Starting synchronization of students from YParéo...");
 
         List<YpareoStudentDto> remoteStudents = ypareoClient.getAllStudents();
-        log.info("Received {} students from YParéo API", remoteStudents.size());
+        log.info("Received {} students from YParéo API (raw)", remoteStudents.size());
 
-        List<Student> entities = remoteStudents.stream().map(dto -> {
+        Set<String> seenEmails = new HashSet<>();
+        List<YpareoStudentDto> uniqueByEmail = new ArrayList<>(remoteStudents.size());
+        for (YpareoStudentDto dto : remoteStudents) {
+            String emailNorm = normalizeEmail(dto.getEmail());
+            if (emailNorm == null || emailNorm.isBlank()) {
+                uniqueByEmail.add(dto); // pas d’email => on ne filtre pas
+            } else if (seenEmails.add(emailNorm)) {
+                uniqueByEmail.add(dto); // première occurrence
+            } else {
+                log.warn("Duplicate email '{}' from YParéo: ignoring student code {}", emailNorm, dto.getCodeApprenant());
+            }
+        }
+        log.info("After de-dup, {} students will be processed", uniqueByEmail.size());
+
+        List<Student> entities = uniqueByEmail.stream().map(dto -> {
             Group group = null;
             if (dto.getCodeGroupe() != null) {
-                group = groupRepository.findByYpareoCode(dto.getCodeGroupe())
+                group = groupRepository.findByCodeGroupe(dto.getCodeGroupe())
                         .orElseGet(() -> {
                             log.warn("Group not found for code {}", dto.getCodeGroupe());
                             return null;
@@ -52,7 +65,7 @@ public class StudentService {
             student.setYpareoCode(dto.getCodeApprenant());
             student.setFirstName(dto.getPrenom());
             student.setLastName(dto.getNom());
-            student.setEmail(dto.getEmail());
+            student.setEmail(normalizeEmail(dto.getEmail()));
             student.setLogin(dto.getLogin());
             student.setBirthDate(dto.getDateNaissance());
             student.setGroup(group);
@@ -62,8 +75,11 @@ public class StudentService {
         studentRepository.saveAll(entities);
 
         log.info("Synchronization complete. {} students updated or inserted.", entities.size());
-
         return entities.stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 
     @Cacheable(value = "students")

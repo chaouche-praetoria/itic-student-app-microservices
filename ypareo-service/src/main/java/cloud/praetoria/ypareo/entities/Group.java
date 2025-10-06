@@ -24,11 +24,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "groups", indexes = {
+@Table(name = "ygroups", indexes = {
     @Index(name = "idx_group_code_group", columnList = "code_group"),
     @Index(name = "idx_group_label", columnList = "label"),
     @Index(name = "idx_group_short_label", columnList = "short_label"),
-    @Index(name = "idx_group_code_formation", columnList = "code_formation"),
     @Index(name = "idx_group_dates", columnList = "date_debut, date_fin"),
     @Index(name = "idx_group_active", columnList = "is_active")
 })
