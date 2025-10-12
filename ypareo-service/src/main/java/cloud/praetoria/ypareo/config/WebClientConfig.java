@@ -1,16 +1,30 @@
 package cloud.praetoria.ypareo.config;
 
+import jakarta.ws.rs.core.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClient.Builder;
 
 @Configuration
 public class WebClientConfig {
 
+    @Value("${ypareo.api.base-url}")
+    private String baseUrl;
+
     @Bean
-    public WebClient webClient(Builder builder) {
-        return builder.baseUrl("https://iticparis.ymag.cloud/index.php") 
+    public WebClient webClient() {
+
+        ExchangeStrategies strategies = ExchangeStrategies.builder()
+                .codecs(cfg -> cfg.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)) // 10MB
+                .build();
+
+        return WebClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .exchangeStrategies(strategies)
                 .build();
     }
 }

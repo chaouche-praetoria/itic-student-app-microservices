@@ -1,7 +1,6 @@
 package cloud.praetoria.ypareo.repositories;
 
 
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,7 +16,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
      * @param ypareoCode the YParéo group code (codeGroupe)
      * @return Optional<Group>
      */
-    Optional<Group> findByYpareoCode(Long ypareoCode);
+    Optional<Group> findByCodeGroupe(Long ypareoCode);
 
     /**
      * Find a group by its short label (e.g. "M1-BD-ALT").
@@ -25,11 +24,4 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
      * @return Optional<Group>
      */
     Optional<Group> findByShortLabel(String shortLabel);
-
-    /**
-     * Find all groups belonging to a given formation (optional field).
-     * @param formationLabel the formation label (e.g. "Master Big Data")
-     * @return List<Group>
-     */
-    List<Group> findByFormationLabelContainingIgnoreCase(String formationLabel);
 }

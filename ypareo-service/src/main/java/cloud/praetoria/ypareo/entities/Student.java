@@ -27,7 +27,6 @@ import lombok.NoArgsConstructor;
     @Index(name = "idx_student_login", columnList = "login"),
     @Index(name = "idx_student_email", columnList = "email"),
     @Index(name = "idx_student_group", columnList = "group_id"),
-    @Index(name = "idx_student_uuid", columnList = "uuid_net_utilisateur"),
     @Index(name = "idx_student_nom_prenom", columnList = "last_name, first_name")
 })
 @Data
@@ -46,10 +45,6 @@ public class Student {
     @Column(name = "login", nullable = false, unique = true, length = 50)
     private String login; // login de l'API (ex: CTSIELA)
     
-    @Column(name = "uuid_net_utilisateur", unique = true)
-    private String uuidNetUtilisateur; // uuidNetUtilisateur de l'API
-    
-    
     @Column(name = "last_name", nullable = false, length = 50)
     private String lastName; 
     
@@ -59,28 +54,15 @@ public class Student {
     @Column(name = "email", unique = true, length = 100)
     private String email; // email de l'API
     
-    @Column(name = "phone", length = 20)
-    private String phone;
-    
-    @Column(name = "address", length = 200)
-    private String address;
-    
-    @Column(name = "city", length = 50)
-    private String city;
-    
-    @Column(name = "postal_code", length = 10)
-    private String postalCode;
-    
     @Column(name = "birth_date")
     private LocalDate birthDate; 
-
-    
-    @Column(name = "type_utilisateur", length = 20)
-    private String typeUtilisateur;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "group_id") 
     private Group group;
+    
+    @Column(name = "is_pending")
+    private boolean pending = false;
 
     @Column(name = "is_active")
     @Builder.Default

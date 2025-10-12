@@ -1,5 +1,8 @@
 package cloud.praetoria.ypareo.dtos;
 
+import java.time.LocalDate;
+
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,5 +17,6 @@ public class GroupDto {
     private Long ypareoCode;
     private String label;       
     private String shortLabel; 
-    private String formationLabel;
+    private LocalDate dateDebut; 
+    private LocalDate dateFin;
 }
