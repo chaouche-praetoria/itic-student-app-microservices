@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import cloud.praetoria.ypareo.dtos.YpareoCourseDto;
 import cloud.praetoria.ypareo.dtos.YpareoGroupDto;
 import cloud.praetoria.ypareo.dtos.YpareoStudentDto;
+import cloud.praetoria.ypareo.dtos.YpareoTrainerDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -90,4 +91,26 @@ public class YpareoClient {
         return new ArrayList<>(responseMap.values());
     }
 
+    public List<YpareoTrainerDto> getAllTrainers() {
+        String uri = baseUrl + "/personnels";
+        log.info("Calling YParéo API for trainers: {}", uri);
+
+        Map<String, YpareoTrainerDto> responseMap = webClient.get()
+                .uri(uri)
+                .header("X-Auth-Token", xAuthToken)
+                .retrieve()
+                .onStatus(HttpStatusCode::is5xxServerError, resp ->
+                        resp.bodyToMono(String.class).defaultIfEmpty("")
+                                .flatMap(body -> Mono.error(new RuntimeException(
+                                        "Server Error " + resp.statusCode().value() + ": " + body))))
+                .bodyToMono(new ParameterizedTypeReference<Map<String, YpareoTrainerDto>>() {})
+                .block();
+
+        if (responseMap == null) {
+            log.warn("No trainers returned from YParéo API");
+            return List.of();
+        }
+
+        return new ArrayList<>(responseMap.values());
+    }
 }

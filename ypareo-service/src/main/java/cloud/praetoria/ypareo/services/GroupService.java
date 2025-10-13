@@ -79,7 +79,7 @@ public class GroupService {
                 .label(group.getLabel())
                 .shortLabel(group.getShortLabel())
                 .dateDebut(group.getDateDebut())
-                .dateFin(group.getDateDebut())
+                .dateFin(group.getDateFin())
                 .build();
     }
 }
