@@ -1,0 +1,75 @@
+# =========================================
+# GAMING SERVICE CONFIGURATION
+# =========================================
+
+server:
+  port: 8083
+  servlet:
+    context-path: /api/gaming
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    include-message: always
+    include-binding-errors: always
+
+spring:
+  application:
+    name: gaming-service
+
+  profiles:
+    active: dev
+    
+  # =========================================
+  # MYSQL DATABASE CONFIGURATION
+  # =========================================
+  datasource:
+    url: jdbc:mysql://localhost:3306/gaming_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Europe/Paris
+    username: root
+    password: 
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 20000
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      auto-commit: true
+
+  # =========================================
+  # JPA / HIBERNATE
+  # =========================================
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    open-in-view: false
+    
+# =========================================
+# YPAREO SERVICE URL
+# =========================================
+ypareo:
+  service:
+    url: http://localhost:8082/api/ypareo    
+
+
+
+# =========================================
+# SPRINGDOC / SWAGGER OPENAPI
+# =========================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+  packages-to-scan: cloud.praetoria.gaming.controllers

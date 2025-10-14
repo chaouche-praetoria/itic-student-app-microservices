@@ -43,14 +43,10 @@ public class Trainer {
     @Column(nullable = false)
     private String lastName;
 
-    @Column(nullable = false)
     private String firstName;
 
     @Column
     private String email;
-
-    @Column
-    private String phone;
 
     @OneToMany(mappedBy = "trainer", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Course> courses;
