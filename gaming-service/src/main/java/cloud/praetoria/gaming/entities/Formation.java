@@ -28,6 +28,8 @@ public class Formation {
     @Column(nullable = false)
     private String displayName;
 
+    private Long ypareoFormationCode;
+
     @OneToMany(mappedBy = "formation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ClassGroup> classes = new ArrayList<>();
 

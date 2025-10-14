@@ -45,6 +45,7 @@ public class YpareoSyncService {
                     Formation f = new Formation();
                     f.setKeyName(formationKey);
                     f.setDisplayName(dto.getFullLabel() != null ? dto.getFullLabel() : formationKey);
+                    f.setYpareoFormationCode(dto.getYpareoCode()); 
                     return formationRepository.save(f);
                 });
 
