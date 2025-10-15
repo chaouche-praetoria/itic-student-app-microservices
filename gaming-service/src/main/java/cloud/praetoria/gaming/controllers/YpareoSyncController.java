@@ -26,4 +26,10 @@ public class YpareoSyncController {
         ypareoSyncService.syncStudents();
         return ResponseEntity.ok("Students synchronized");
     }
+
+    @GetMapping("/trainers")
+    public ResponseEntity<String> syncTrainers() {
+        ypareoSyncService.syncTrainers();
+        return ResponseEntity.ok("Trainers synchronized");
+    }
 }
