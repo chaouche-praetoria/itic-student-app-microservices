@@ -26,11 +26,5 @@ public interface TrainerRepository extends JpaRepository<Trainer, Long> {
      */
     List<Trainer> findByLastNameIgnoreCase(String lastName);
 
-    /**
-     * Find trainers by email (case insensitive).
-     * @param email trainer's email
-     * @return Optional<Trainer>
-     */
-    Optional<Trainer> findByEmailIgnoreCase(String email);
 
 }

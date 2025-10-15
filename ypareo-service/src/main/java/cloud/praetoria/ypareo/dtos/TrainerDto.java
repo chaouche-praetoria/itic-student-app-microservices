@@ -14,10 +14,4 @@ public class TrainerDto {
     private Long ypareoCode;
     private String firstName;
     private String lastName;
-    private String email;
-    private String phone;
-    private String city;
-    private String postalCode;
-    private String address;
-    private String groupLabel; 
 }
