@@ -1,6 +1,6 @@
 package cloud.praetoria.ypareo.dtos;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,14 +12,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class CourseDto {
-    private Long id;
-    private Long ypareoCode;
-    private String subjectLabel; 
-    private String roomLabel;
-    private LocalDateTime startTime;
-    private LocalDateTime endTime;
-    private boolean cancelled;
-    private boolean online;
-    private String groupLabel;  
-    private String trainerName;  
+	   private Long codeApprenant;
+       private String nomMatiere;
+       private List<Long> codesApprenant;
+       private List<Long> codesGroupe;
+       private String date; 
+       private String heureDebut; 
+       private String heureFin;
+       private String duree;
+       private List<Long> codesPersonnel;
+       private List<Long> codesSalle;
+       private Integer isDistance;
 }
