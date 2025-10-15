@@ -2,6 +2,7 @@ package cloud.praetoria.gaming.clients;
 
 import java.util.List;
 
+import cloud.praetoria.gaming.dtos.YpareoTrainerDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -25,6 +26,15 @@ public class YpareoProxyClient {
                 .uri("/students")
                 .retrieve()
                 .bodyToFlux(YpareoStudentDto.class)
+                .collectList()
+                .block();
+    }
+
+    public List<YpareoTrainerDto> getAllTrainers() {
+        return webClient.get()
+                .uri("/trainers")
+                .retrieve()
+                .bodyToFlux(YpareoTrainerDto.class)
                 .collectList()
                 .block();
     }
