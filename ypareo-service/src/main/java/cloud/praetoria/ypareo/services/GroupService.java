@@ -2,6 +2,7 @@ package cloud.praetoria.ypareo.services;
 
 
 
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,8 +13,10 @@ import org.springframework.stereotype.Service;
 import cloud.praetoria.ypareo.clients.YpareoClient;
 import cloud.praetoria.ypareo.dtos.GroupDto;
 import cloud.praetoria.ypareo.dtos.YpareoGroupDto;
+import cloud.praetoria.ypareo.dtos.YpareoGroupTrainerDto;
 import cloud.praetoria.ypareo.entities.Group;
 import cloud.praetoria.ypareo.repositories.GroupRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,7 +28,8 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final YpareoClient ypareoClient;
 
-    @CacheEvict(value = {"groups", "group"}, allEntries = true)
+    @Transactional
+    @CacheEvict(value = {"groups", "group", "teacher-groups"}, allEntries = true)
     public List<GroupDto> syncGroupsFromYpareo() {
         log.info("Starting synchronization of groups from YParéo...");
 
@@ -58,10 +62,52 @@ public class GroupService {
 
         return entities.stream().map(this::toDto).collect(Collectors.toList());
     }
+    
+    @Cacheable(value = "teacher-groups")
+    public List<GroupDto> syncGroupsOfTrainerFromYpareo(Long trainerId) {
+        log.info("Starting synchronization of groups of trainer {} from YParéo", trainerId);
+
+        List<YpareoGroupTrainerDto> remoteGroups = ypareoClient.getGroupsOfTrainer(trainerId);
+        log.info("Received {} groups from YParéo API for trainer {}", remoteGroups.size(), trainerId);
+
+        if (remoteGroups.isEmpty()) {
+            log.warn("No groups found for trainer {}", trainerId);
+            return Collections.emptyList();
+        }
+
+        List<Long> codeGroupes = remoteGroups.stream()
+            .map(YpareoGroupTrainerDto::getCodeGroupe)
+            .distinct()
+            .collect(Collectors.toList());
+
+        List<Group> existingGroups = groupRepository.findByCodeGroupeIn(codeGroupes);
+        
+        List<Long> foundCodes = existingGroups.stream()
+            .map(Group::getCodeGroupe)
+            .collect(Collectors.toList());
+        
+        List<Long> missingCodes = codeGroupes.stream()
+            .filter(code -> !foundCodes.contains(code))
+            .collect(Collectors.toList());
+
+        if (!missingCodes.isEmpty()) {
+            log.warn("Trainer {} has {} groups not yet synchronized in database: {}", 
+                     trainerId, missingCodes.size(), missingCodes);
+            log.info("Suggestion: Run full groups synchronization to import these groups");
+        }
+
+        log.info("Returning {} existing groups for trainer {} (ignored {} missing)", 
+                 existingGroups.size(), trainerId, missingCodes.size());
+
+        return existingGroups.stream()
+            .map(this::toDto)
+            .collect(Collectors.toList());
+    }
+
 
     @Cacheable(value = "groups")
     public List<GroupDto> getAllGroups() {
-        log.info("📥 Fetching all groups from database...");
+        log.info("Fetching all groups from database...");
         return groupRepository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -75,7 +121,7 @@ public class GroupService {
     private GroupDto toDto(Group group) {
         return GroupDto.builder()
                 .id(group.getId())
-                .ypareoCode(group.getCodeGroupe())
+                .CodeGroup(group.getCodeGroupe())
                 .label(group.getLabel())
                 .shortLabel(group.getShortLabel())
                 .dateDebut(group.getDateDebut())

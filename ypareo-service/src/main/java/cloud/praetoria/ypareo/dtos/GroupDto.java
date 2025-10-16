@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class GroupDto {
     private Long id;
-    private Long ypareoCode;
+    private Long CodeGroup;
     private String label;       
     private String shortLabel; 
     private LocalDate dateDebut; 
