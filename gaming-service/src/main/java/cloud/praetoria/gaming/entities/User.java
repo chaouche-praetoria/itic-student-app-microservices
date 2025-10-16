@@ -1,27 +1,19 @@
 package cloud.praetoria.gaming.entities;
 
 
+import cloud.praetoria.gaming.enums.EvalType;
+import cloud.praetoria.gaming.enums.UserType;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import cloud.praetoria.gaming.enums.EvalType;
-import cloud.praetoria.gaming.enums.UserType;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "users")
@@ -45,9 +37,16 @@ public class User {
     private UserType type; 
     
     @Column(nullable = false)
-    private int points; 
-    
-    private List<Long> classGroupIds;
+    private int points;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_class_groups",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "class_group_id")
+    )
+    private List<ClassGroup> classGroups = new ArrayList<>();
+
     @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
     private List<Assignment> createdAssignments = new ArrayList<>();
 

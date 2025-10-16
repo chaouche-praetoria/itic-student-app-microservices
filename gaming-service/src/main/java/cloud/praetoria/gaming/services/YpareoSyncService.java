@@ -1,15 +1,10 @@
 package cloud.praetoria.gaming.services;
 
-import java.util.List;
-import java.util.Optional;
-
-import cloud.praetoria.gaming.dtos.YpareoTrainerDto;
-import org.springframework.stereotype.Service;
-
 import cloud.praetoria.gaming.clients.YpareoProxyClient;
 import cloud.praetoria.gaming.common.FormationNormalizer;
 import cloud.praetoria.gaming.dtos.YpareoGroupDto;
 import cloud.praetoria.gaming.dtos.YpareoStudentDto;
+import cloud.praetoria.gaming.dtos.YpareoTrainerDto;
 import cloud.praetoria.gaming.entities.ClassGroup;
 import cloud.praetoria.gaming.entities.Formation;
 import cloud.praetoria.gaming.entities.User;
@@ -20,6 +15,10 @@ import cloud.praetoria.gaming.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,26 +42,26 @@ public class YpareoSyncService {
             String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
 
             Formation formation = formationRepository.findByKeyName(formationKey)
-                .orElseGet(() -> {
-                    Formation f = new Formation();
-                    f.setKeyName(formationKey);
-                    f.setDisplayName(dto.getFullLabel() != null ? dto.getFullLabel() : formationKey);
-                    f.setYpareoFormationCode(dto.getYpareoCode()); 
-                    return formationRepository.save(f);
-                });
+                    .orElseGet(() -> {
+                        Formation f = new Formation();
+                        f.setKeyName(formationKey);
+                        f.setDisplayName(dto.getFullLabel() != null ? dto.getFullLabel() : formationKey);
+                        f.setYpareoFormationCode(dto.getYpareoCode());
+                        return formationRepository.save(f);
+                    });
 
             ClassGroup classGroup = classGroupRepository.findById(dto.getYpareoCode())
-                .orElseGet(() -> {
-                    ClassGroup newGroup = ClassGroup.builder()
-                            .id(dto.getYpareoCode())
-                            .label(dto.getShortLabel())
-                            .active(true)
-                            .dateDebut(dto.getDateDebut())
-                            .dateFin(dto.getDateFin())
-                            .formation(formation) 
-                            .build();
-                    return classGroupRepository.save(newGroup);
-                });
+                    .orElseGet(() -> {
+                        ClassGroup newGroup = ClassGroup.builder()
+                                .id(dto.getYpareoCode())
+                                .label(dto.getShortLabel())
+                                .active(true)
+                                .dateDebut(dto.getDateDebut())
+                                .dateFin(dto.getDateFin())
+                                .formation(formation)
+                                .build();
+                        return classGroupRepository.save(newGroup);
+                    });
 
             classGroup.setLabel(dto.getShortLabel());
             classGroup.setFormation(formation);
@@ -75,7 +74,7 @@ public class YpareoSyncService {
 
     @Transactional
     public void syncStudents() {
-    	log.info("Starting student sync from YParéo service...");
+        log.info("Starting student sync from YParéo service...");
 
         List<YpareoStudentDto> students = ypareoClient.getAllStudents();
         log.info("Received {} students from YParéo", students.size());
@@ -121,7 +120,6 @@ public class YpareoSyncService {
 
         for (YpareoTrainerDto dto : trainers) {
 
-            // je ne pense pas que les champs soit nuls mais j'ai une erreur !!! d'où ma vérif
             if (dto.getFirstName() == null || dto.getLastName() == null) {
                 log.warn("Trainer {} ignored: missing name data", dto.getYpareoCode());
                 ignored++;
@@ -142,6 +140,15 @@ public class YpareoSyncService {
             user.setFirstName(dto.getFirstName());
             user.setLastName(dto.getLastName());
             user.setType(UserType.TRAINER);
+
+            if (dto.getCodeGroupe() != null) {
+                Optional<ClassGroup> classGroup = classGroupRepository.findById(dto.getCodeGroupe());
+                if (classGroup.isPresent()) {
+                    user.getClassGroups().add(classGroup.get());
+                } else {
+                    log.warn("ClassGroup {} not found for trainer {}", dto.getCodeGroupe(), dto.getYpareoCode());
+                }
+            }
 
             userRepository.save(user);
 
