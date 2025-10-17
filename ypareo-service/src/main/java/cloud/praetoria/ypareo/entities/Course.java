@@ -38,13 +38,13 @@ public class Course {
     private Long id;
 
     @Column(name = "ypareo_code", unique = true)
-    private Long ypareoCode; // codeSeance
+    private Long ypareoCode;
 
     @Column(name = "subject_code")
-    private Long subjectCode; // codeMatiere
+    private Long subjectCode; 
 
     @Column(name = "subject_name")
-    private String subjectName; // nomMatiere
+    private String subjectName; 
 
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;

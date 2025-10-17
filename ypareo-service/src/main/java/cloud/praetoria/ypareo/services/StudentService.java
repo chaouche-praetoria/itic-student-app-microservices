@@ -45,9 +45,9 @@ public class StudentService {
         for (YpareoStudentDto dto : remoteStudents) {
             String emailNorm = normalizeEmail(dto.getEmail());
             if (emailNorm == null || emailNorm.isBlank()) {
-                uniqueByEmail.add(dto); // pas d’email => on ne filtre pas
+                uniqueByEmail.add(dto);
             } else if (seenEmails.add(emailNorm)) {
-                uniqueByEmail.add(dto); // première occurrence
+                uniqueByEmail.add(dto); 
             } else {
                 log.warn("Duplicate email '{}' from YParéo: ignoring student code {}", emailNorm, dto.getCodeApprenant());
             }
@@ -55,7 +55,7 @@ public class StudentService {
         log.info("After de-dup, {} students will be processed", uniqueByEmail.size());
 
         List<Student> entities = uniqueByEmail.stream().map(dto -> {
-        	Optional<Group> groupOpt = groupRepository.findByCodeGroupe(dto.getCodeGroupe());
+            Optional<Group> groupOpt = groupRepository.findByCodeGroupe(dto.getCodeGroupe());
             Group group = groupOpt.orElse(null);
 
             Student student = studentRepository.findByYpareoCode(dto.getCodeApprenant())
@@ -67,29 +67,26 @@ public class StudentService {
             student.setEmail(normalizeEmail(dto.getEmail()));
             student.setLogin(dto.getLogin());
             student.setBirthDate(dto.getDateNaissance());
+            
             student.setGroup(group);
             
             student.setPending(group == null);
-
-            if (group == null) {
-                log.warn("⚠️ Group not found for code {} (student: {} {} [{}]) → marked as pending",
-                        dto.getCodeGroupe(), dto.getPrenom(), dto.getNom(), dto.getCodeApprenant());
-            }
 
             return student;
         })
         .collect(Collectors.toList());
 
-    studentRepository.saveAll(entities);
+        studentRepository.saveAll(entities);
 
-    log.info("Synchronization complete. {} students updated or inserted.", entities.size());
-    long pendingCount = entities.stream().filter(Student::isPending).count();
-    if (pendingCount > 0) {
-        log.warn(" {} students marked as pending (groups not yet available)", pendingCount);
+        log.info("Synchronization complete. {} students updated or inserted.", entities.size());
+        long pendingCount = entities.stream().filter(Student::isPending).count();
+        if (pendingCount > 0) {
+            log.warn(" {} students marked as pending (groups not yet available)", pendingCount);
+        }
+
+        return entities.stream().map(this::toDto).collect(Collectors.toList());
     }
 
-    return entities.stream().map(this::toDto).collect(Collectors.toList());
-}
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
@@ -98,7 +95,7 @@ public class StudentService {
     @Cacheable(value = "students")
     public List<StudentDto> getAllStudents() {
         log.info("Fetching all students from database....");
-        return studentRepository.findAll().stream()
+        return studentRepository.findAllWithGroup().stream() 
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
@@ -114,6 +111,7 @@ public class StudentService {
         log.info("Fetching student by YParéo code: {}", ypareoCode);
         return studentRepository.findByYpareoCode(ypareoCode).map(this::toDto);
     }
+    
 
     @Cacheable(value = "students_group", key = "#groupId")
     public List<StudentDto> getStudentsByGroup(Long groupId) {
@@ -130,6 +128,8 @@ public class StudentService {
                 .firstName(s.getFirstName())
                 .lastName(s.getLastName())
                 .email(s.getEmail())
+                .codeGroup(s.getGroup() != null ? s.getGroup().getCodeGroupe() : null)  // ✅ Extraire codeGroupe
                 .build();
     }
+
 }

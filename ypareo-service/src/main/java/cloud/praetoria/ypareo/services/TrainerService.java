@@ -33,13 +33,13 @@ public class TrainerService {
 
         List<YpareoTrainerDto> remoteTrainers = ypareoClient.getAllTrainers();
         log.info("Received {} trainers from YParéo API (raw)", remoteTrainers.size());
-        System.out.println("///////////////////////////////////// " + remoteTrainers);
 
         // Pas besoin de filtrer par email
         List<Trainer> entities = remoteTrainers.stream().map(dto -> {
             Trainer trainer = trainerRepository.findByYpareoCode(dto.getCodePersonnel())
                     .orElse(new Trainer());
 
+            
             trainer.setYpareoCode(dto.getCodePersonnel());
             trainer.setFirstName(dto.getPrenomPersonnel());
             trainer.setLastName(dto.getNomPersonnel());
@@ -75,7 +75,7 @@ public class TrainerService {
 
     private TrainerDto toDto(Trainer t) {
         return TrainerDto.builder()
-                .id(t.getId())
+                .id(t.getYpareoCode())
                 .ypareoCode(t.getYpareoCode())
                 .firstName(t.getFirstName())
                 .lastName(t.getLastName())

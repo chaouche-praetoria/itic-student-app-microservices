@@ -20,7 +20,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "students", indexes = {
     @Index(name = "idx_student_ypareo_code", columnList = "ypareo_code"),
@@ -40,10 +39,10 @@ public class Student {
     private Long id;
 
     @Column(name = "ypareo_code", nullable = false, unique = true)
-    private Long ypareoCode; // codeApprenant de l'API
+    private Long ypareoCode; 
     
     @Column(name = "login", nullable = false, unique = true, length = 50)
-    private String login; // login de l'API (ex: CTSIELA)
+    private String login;
     
     @Column(name = "last_name", nullable = false, length = 50)
     private String lastName; 
@@ -52,14 +51,14 @@ public class Student {
     private String firstName;
     
     @Column(name = "email", unique = true, length = 100)
-    private String email; // email de l'API
+    private String email; 
     
     @Column(name = "birth_date")
     private LocalDate birthDate; 
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id") 
-    private Group group;
+    @JoinColumn(name = "group_id")
+    private Group group; 
     
     @Column(name = "is_pending")
     private boolean pending = false;
@@ -76,7 +75,6 @@ public class Student {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    
     public String getFullName() {
         return firstName + " " + lastName;
     }
@@ -84,6 +82,4 @@ public class Student {
     public String getDisplayName() {
         return lastName + " " + (firstName != null ? firstName.substring(0, 1).toUpperCase() + "." : "");
     }
-    
-    
 }

@@ -30,6 +30,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
      * Find all courses for a given trainer within a date range.
      * Used for a trainer's timetable.
      */
-    List<Course> findByTrainer_IdAndStartTimeBetween(Long trainerId, LocalDateTime start, LocalDateTime end);
+    List<Course> findByYpareoCodeAndStartTimeBetween(Long trainerId, LocalDateTime start, LocalDateTime end);
 
 }

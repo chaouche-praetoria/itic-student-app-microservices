@@ -21,11 +21,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "trainers",
        indexes = {
-           @Index(name = "idx_trainer_ypareo_code", columnList = "ypareo_code")
+           @Index(name = "idx_trainer_first_last_name", columnList = "firstName, lastName")
        })
 @Data
 @NoArgsConstructor
@@ -34,12 +33,8 @@ import lombok.NoArgsConstructor;
 public class Trainer {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; 
-
-    @Column(name = "ypareo_code", nullable = false, unique = true)
-    private Long ypareoCode; 
-
+    @Column(name = "ypareo_code", nullable = false)
+    private Long ypareoCode;  
     @Column(nullable = false)
     private String lastName;
 

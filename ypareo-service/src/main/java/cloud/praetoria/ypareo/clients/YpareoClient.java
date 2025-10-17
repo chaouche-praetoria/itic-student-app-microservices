@@ -98,7 +98,6 @@ public class YpareoClient {
         return new ArrayList<>(responseMap.values());
     }
     public List<YpareoGroupTrainerDto> getGroupsOfTrainer(Long trainerId) {
-    	System.out.println("test *********************************" + trainerId);
         String uri =  String.format("%s/groupes-personnels/from-planning?codesPersonnel=%d", baseUrl, trainerId);
     	log.info("Calling YParéo API for groups of a trainer: {}", uri);
     	
