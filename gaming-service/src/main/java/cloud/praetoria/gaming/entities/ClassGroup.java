@@ -22,7 +22,9 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 @Entity
 @Table(name = "class_groups")
@@ -30,11 +32,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)  // 🆕 FIX StackOverflow
+@ToString(exclude = {"trainers", "students", "assignments", "formation"})  // 🆕 FIX StackOverflow
 public class ClassGroup {
 
-	@Id // j'ai match l'id directos pour qu il corresponde au code_group dans le ypareo_service
-    private Long id;	
-	
+    @Id
+    @EqualsAndHashCode.Include  // 🆕 Uniquement l'ID dans hashCode/equals
+    private Long id;
+    
     @Column(nullable = false)
     private String label;
     
@@ -45,16 +50,24 @@ public class ClassGroup {
     private LocalDate dateFin;
     
     @Column(nullable = false)
-    private boolean active;
+    @Builder.Default
+    private boolean active = true;
     
     @OneToMany(mappedBy = "classGroup", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Assignment> assignments = new ArrayList<>();
     
     @ManyToMany(mappedBy = "classGroups")
     @JsonIgnore
+    @Builder.Default
     private Set<User> trainers = new HashSet<>();
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "formation_id")
     private Formation formation;
+    
+    @ManyToMany(mappedBy = "classGroups")
+    @JsonIgnore
+    @Builder.Default
+    private Set<User> students = new HashSet<>();
 }

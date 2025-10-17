@@ -1,9 +1,16 @@
 package cloud.praetoria.gaming.services;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import cloud.praetoria.gaming.clients.YpareoProxyClient;
 import cloud.praetoria.gaming.common.FormationNormalizer;
 import cloud.praetoria.gaming.dtos.ClassGroupDto;
 import cloud.praetoria.gaming.dtos.FormationDto;
+import cloud.praetoria.gaming.dtos.UserDto;
 import cloud.praetoria.gaming.dtos.YpareoGroupDto;
 import cloud.praetoria.gaming.entities.ClassGroup;
 import cloud.praetoria.gaming.entities.Formation;
@@ -14,11 +21,6 @@ import cloud.praetoria.gaming.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -119,6 +121,35 @@ public class TrainerService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public List<UserDto> getFormationStudents(Long formationId) {
+        log.info("Getting all students for formation ID: {}", formationId);
+        
+        Formation formation = formationRepository.findById(formationId)
+            .orElseThrow(() -> new RuntimeException("Formation not found with ID: " + formationId));
+        
+        List<ClassGroup> classGroups = formation.getClasses();
+        
+        if (classGroups.isEmpty()) {
+            log.warn("No class groups found for formation {}", formationId);
+            return List.of();
+        }
+        
+        List<Long> classGroupIds = classGroups.stream()
+            .map(ClassGroup::getId)
+            .collect(Collectors.toList());
+        
+        log.info("Found {} class groups for formation {}: {}", 
+                 classGroups.size(), formationId, classGroupIds);
+        
+        List<User> students = userRepository.findStudentsByClassGroupIds(classGroupIds);
+        
+        log.info("Found {} students in formation {}", students.size(), formationId);
+        
+        return students.stream()
+            .map(this::toUserDto)
+            .collect(Collectors.toList());
+    }
 
     private FormationDto toFormationDto(Formation formation) {
         return FormationDto.builder()
@@ -142,5 +173,16 @@ public class TrainerService {
                 .active(classGroup.isActive())
                 .formation(formationDto)
                 .build();
+    }
+    
+    private UserDto toUserDto(User user) {
+        return UserDto.builder()
+            .id(user.getId())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .fullName(user.getFullName())
+            .points(user.getPoints())
+            .active(user.getActive())
+            .build();
     }
 }

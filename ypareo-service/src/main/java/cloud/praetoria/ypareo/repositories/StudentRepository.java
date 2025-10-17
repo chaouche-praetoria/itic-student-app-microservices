@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import cloud.praetoria.ypareo.entities.Student;
@@ -38,4 +39,7 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
      * Useful for quick search or debugging.
      */
     List<Student> findByEmailContainingIgnoreCase(String emailPart);
+    
+    @Query("SELECT s FROM Student s LEFT JOIN FETCH s.group")
+    List<Student> findAllWithGroup();
 }

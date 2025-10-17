@@ -3,6 +3,7 @@ package cloud.praetoria.gaming.entities;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,7 +26,10 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+
 
 @Entity
 @Table(name = "users")
@@ -33,10 +37,13 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor     
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)  // 🆕 FIX StackOverflow
+@ToString(exclude = {"classGroups", "createdAssignments", "givenAwards", "receivedAwards"})  // 🆕 FIX StackOverflow
 public class User {
-	// l'id c'est le code ypareo de l'apprenant (Ypareo_Code dans la bdd ypareo_db)
-	@Id
-    private Long id;	
+    
+    @Id
+    @EqualsAndHashCode.Include  // 🆕 Uniquement l'ID dans hashCode/equals
+    private Long id;
 
     @Column(nullable = false)
     private String firstName;
@@ -49,9 +56,9 @@ public class User {
     private UserType type; 
     
     @Column(nullable = false)
+    @Builder.Default
     private Integer points = 0;
 
-    
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_class_groups",
@@ -62,20 +69,28 @@ public class User {
             @Index(name = "idx_user_class_group", columnList = "class_group_id")
         }
     )
-    
     @Builder.Default
     private List<ClassGroup> classGroups = new ArrayList<>();
 
     @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Assignment> createdAssignments = new ArrayList<>();
 
     @OneToMany(mappedBy = "grader", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PointsAward> givenAwards = new ArrayList<>();
-    
-    
 
     @OneToMany(mappedBy = "student", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<PointsAward> receivedAwards = new ArrayList<>();
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
+
+    // ========================================
+    // MÉTHODES UTILITAIRES
+    // ========================================
 
     public boolean isTrainer() {
         return type == UserType.TRAINER;
@@ -104,40 +119,59 @@ public class User {
                         Collectors.summingInt(PointsAward::getPointsEarned)
                 ));
     }
-    
-    @Column(nullable = false)
-    private Boolean active = true;
 
     public String getFullName() {
         return firstName + " " + lastName;
     }
     
     public void addClassGroup(ClassGroup classGroup) {
+        if (this.classGroups == null) {
+            this.classGroups = new ArrayList<>();
+        }
+        
         if (!this.classGroups.contains(classGroup)) {
             this.classGroups.add(classGroup);
-            classGroup.getTrainers().add(this);
+            
+            if (this.isTrainer()) {
+                if (classGroup.getTrainers() == null) {
+                    classGroup.setTrainers(new HashSet<>());
+                }
+                classGroup.getTrainers().add(this);
+            } else if (this.isStudent()) {
+                if (classGroup.getStudents() == null) {
+                    classGroup.setStudents(new HashSet<>());
+                }
+                classGroup.getStudents().add(this);
+            }
         }
     }
 
     public void removeClassGroup(ClassGroup classGroup) {
-        if (this.classGroups.contains(classGroup)) {
+        if (this.classGroups != null && this.classGroups.contains(classGroup)) {
             this.classGroups.remove(classGroup);
-            classGroup.getTrainers().remove(this);
+            
+            if (this.isTrainer() && classGroup.getTrainers() != null) {
+                classGroup.getTrainers().remove(this);
+            } else if (this.isStudent() && classGroup.getStudents() != null) {
+                classGroup.getStudents().remove(this);
+            }
         }
     }
 
     public List<Long> getClassGroupIds() {
+        if (classGroups == null) return new ArrayList<>();
         return classGroups.stream()
             .map(ClassGroup::getId)
             .collect(Collectors.toList());
     }
 
     public boolean teachesInClass(Long classGroupId) {
+        if (classGroups == null) return false;
         return classGroups.stream()
             .anyMatch(cg -> cg.getId().equals(classGroupId));
     }
 
     public int getClassGroupCount() {
-        return classGroups.size();
+        return classGroups == null ? 0 : classGroups.size();
     }
 }

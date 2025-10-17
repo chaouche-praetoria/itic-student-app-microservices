@@ -1,5 +1,11 @@
 package cloud.praetoria.gaming.services;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.stereotype.Service;
+
 import cloud.praetoria.gaming.clients.YpareoProxyClient;
 import cloud.praetoria.gaming.common.FormationNormalizer;
 import cloud.praetoria.gaming.dtos.YpareoGroupDto;
@@ -15,10 +21,6 @@ import cloud.praetoria.gaming.repositories.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -81,30 +83,56 @@ public class YpareoSyncService {
 
         int created = 0;
         int updated = 0;
-        int ignored = 0;
+        int skipped = 0;
 
         for (YpareoStudentDto dto : students) {
-
-            User user = userRepository.findById(dto.getYpareoCode())
-                    .orElseGet(User::new);
-
-            boolean isNew = user.getId() == null;
-
-            user.setId(dto.getYpareoCode());
-            user.setFirstName(dto.getFirstName());
-            user.setLastName(dto.getLastName());
-            user.setType(UserType.STUDENT);
-
-            userRepository.save(user);
-
-            if (isNew) {
-                created++;
-            } else {
-                updated++;
+            
+            Long classGroupCode = dto.getCodeGroup();
+            if (classGroupCode == null) {
+                log.warn("Student {} has no class group, skipped", dto.getYpareoCode());
+                skipped++;
+                continue;
             }
-        }
 
-        log.info("Sync complete. Created: {}, Updated: {}, Ignored: {}", created, updated, ignored);
+            ClassGroup classGroup = classGroupRepository.findById(classGroupCode)
+                .orElse(null);
+            
+            if (classGroup == null) {
+                log.warn("Class group {} not found for student {}, skipped", 
+                         classGroupCode, dto.getYpareoCode());
+                skipped++;
+                continue;
+            }
+
+            User student = userRepository.findById(dto.getYpareoCode())
+                    .orElseGet(() -> {
+                        User newStudent = new User();
+                        newStudent.setId(dto.getYpareoCode());
+                        newStudent.setType(UserType.STUDENT);
+                        newStudent.setPoints(0);
+                        newStudent.setActive(true);
+                        newStudent.setClassGroups(new ArrayList<>()); 
+                        return newStudent;
+                    });
+
+                boolean isNew = student.getFirstName() == null;
+
+                student.setFirstName(dto.getFirstName());
+                student.setLastName(dto.getLastName());
+                
+                if (student.getClassGroups() == null) {
+                    student.setClassGroups(new ArrayList<>());
+                }
+                
+                student.addClassGroup(classGroup);
+                
+                userRepository.save(student);
+
+                if (isNew) created++; else updated++;
+            }
+
+
+        log.info("Sync complete. Created: {}, Updated: {}, Skipped: {}", created, updated, skipped);
     }
 
     @Transactional
