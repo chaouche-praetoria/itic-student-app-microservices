@@ -19,4 +19,9 @@ public interface PointsAwardRepository extends JpaRepository<PointsAward, Long> 
     Optional<PointsAward> findByStudentIdAndAssignmentId(Long studentId, Long assignmentId);
 
     List<PointsAward> findByGraderIdOrderByAwardedAtDesc(Long graderId);
+
+
+    Optional<PointsAward> findByAssignmentIdAndStudentId(Long assignmentId, Long studentId);
+
+    List<PointsAward> findAllByAssignmentId(Long assignmentId);
 }
