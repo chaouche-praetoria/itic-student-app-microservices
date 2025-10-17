@@ -13,16 +13,13 @@ import lombok.NoArgsConstructor;
 @Builder
 public class YpareoCourseDto {
     private Long codeApprenant;
-    private Long codeMatiere;
     private String nomMatiere;
-    private List<Long> codesApprenant;
-    private List<Long> codesGroupe;
-    private Long codeSeance;
     private String date;
     private String heureDebut;
     private String heureFin;
     private String duree;
-    private List<Long> codesPersonnel;
     private Integer isDistance;
-    private String etatSeance;
+    private List<Long> codesSalle;
+    private List<Long> codesApprenant;
+    private List<Long> codesPersonnel;
 }

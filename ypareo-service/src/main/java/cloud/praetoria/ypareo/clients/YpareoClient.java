@@ -1,5 +1,7 @@
 package cloud.praetoria.ypareo.clients;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -12,8 +14,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import cloud.praetoria.ypareo.dtos.YpareoCourseDto;
 import cloud.praetoria.ypareo.dtos.YpareoGroupDto;
+import cloud.praetoria.ypareo.dtos.YpareoGroupTrainerDto;
 import cloud.praetoria.ypareo.dtos.YpareoStudentDto;
 import cloud.praetoria.ypareo.dtos.YpareoTrainerDto;
+import cloud.praetoria.ypareo.wrappers.YpareoSessionResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -30,6 +34,9 @@ public class YpareoClient {
 
     @Value("${ypareo.auth.token}")
     private String xAuthToken;
+    
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
     public List<YpareoStudentDto> getAllStudents() {
     	String uri = baseUrl + "/utilisateur/apprenants";
@@ -90,6 +97,29 @@ public class YpareoClient {
 
         return new ArrayList<>(responseMap.values());
     }
+    public List<YpareoGroupTrainerDto> getGroupsOfTrainer(Long trainerId) {
+    	System.out.println("test *********************************" + trainerId);
+        String uri =  String.format("%s/groupes-personnels/from-planning?codesPersonnel=%d", baseUrl, trainerId);
+    	log.info("Calling YParéo API for groups of a trainer: {}", uri);
+    	
+    	Map<String, YpareoGroupTrainerDto> responseMap = webClient.get()
+    			.uri(uri)
+    			.header("X-Auth-Token", xAuthToken)
+    			.retrieve()
+    			.onStatus(HttpStatusCode::is5xxServerError, resp ->
+    			resp.bodyToMono(String.class).defaultIfEmpty("")
+    			.flatMap(body -> Mono.error(new RuntimeException(
+    					"Server Error " + resp.statusCode().value() + ": " + body))))
+    			.bodyToMono(new ParameterizedTypeReference<Map<String, YpareoGroupTrainerDto>>() {})
+    			.block();
+    	
+    	if (responseMap == null) {
+    		log.warn("No groups returned from YParéo API");
+    		return List.of();
+    	}
+    	
+    	return new ArrayList<>(responseMap.values());
+    }
 
     public List<YpareoTrainerDto> getAllTrainers() {
         String uri = baseUrl + "/personnels";
@@ -113,4 +143,37 @@ public class YpareoClient {
 
         return new ArrayList<>(responseMap.values());
     }
+    
+    public List<YpareoCourseDto> getSessionsForStudent(Long studentId, LocalDate startDate, LocalDate endDate) {
+        log.info("Fetching sessions for student {} from {} to {}", studentId, startDate, endDate);
+
+        String uri = String.format("%s/planning/%s/%s/apprenant/%d",
+                baseUrl,
+                startDate.format(DATE_FORMATTER),
+                endDate.format(DATE_FORMATTER),
+                studentId
+        );
+
+        try {
+            YpareoSessionResponse response = webClient.get()
+                    .uri(uri)
+                    .header("X-Auth-Token", xAuthToken)
+                    .retrieve()
+                    .bodyToMono(YpareoSessionResponse.class)
+                    .block();
+
+            if (response == null || response.getCours() == null || response.getCours().isEmpty()) {
+                log.warn("No sessions found for student {}", studentId);
+                return List.of();
+            }
+
+            return response.getCours();
+
+        } catch (Exception e) {
+            log.error("Error fetching sessions from YParéo for student {}", studentId, e);
+            return List.of();
+        }
+    }
+
+  
 }

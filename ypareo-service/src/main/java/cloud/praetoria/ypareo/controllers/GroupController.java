@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import cloud.praetoria.ypareo.dtos.GroupDto;
@@ -45,5 +46,13 @@ public class GroupController {
         log.info("Request received: GET /groups/sync");
         List<GroupDto> synced = groupService.syncGroupsFromYpareo();
         return ResponseEntity.ok(synced);
+    }
+    
+    @GetMapping("/trainer/sync/{id}")
+    public ResponseEntity<List<GroupDto>> syncGroupsOfTrainerFromYpareo(@PathVariable Long id) {
+    	System.out.println("********** test ************");
+    	log.info("Request received: GET /groups/trainer/sync");
+    	List<GroupDto> synced = groupService.syncGroupsOfTrainerFromYpareo(id);
+    	return ResponseEntity.ok(synced);
     }
 }
