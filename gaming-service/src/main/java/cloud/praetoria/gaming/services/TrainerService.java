@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -60,9 +59,16 @@ public class TrainerService {
     public List<ClassGroupDto> getTrainerClassGroups(Long trainerId) {
         log.info("Getting class groups for trainer ID: {}", trainerId);
 
+        User trainer = userRepository.findById(trainerId)
+                .orElseThrow(() -> new RuntimeException("Trainer not found with ID: " + trainerId));
+        
+        if (!trainer.isTrainer()) {
+            throw new RuntimeException("User with ID " + trainerId + " is not a trainer");
+        }
+
         List<YpareoGroupDto> trainerGroups = ypareoClient.getGroupsByTrainer(trainerId);
 
-        return trainerGroups.stream()
+        List<ClassGroup> savedClassGroups = trainerGroups.stream()
                 .map(dto -> {
                     String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
 
@@ -93,12 +99,26 @@ public class TrainerService {
                     classGroup.setDateDebut(dto.getDateDebut());
                     classGroup.setDateFin(dto.getDateFin());
 
-                    ClassGroup savedClassGroup = classGroupRepository.save(classGroup);
-
-                    return toClassGroupDto(savedClassGroup);
+                    return classGroupRepository.save(classGroup);
                 })
                 .collect(Collectors.toList());
+
+        for (ClassGroup classGroup : savedClassGroups) {
+            if (!trainer.getClassGroups().contains(classGroup)) {
+                trainer.getClassGroups().add(classGroup);
+                classGroup.getTrainers().add(trainer);
+            }
+        }
+        
+        userRepository.save(trainer);
+        
+        log.info("Linked {} class groups to trainer {}", savedClassGroups.size(), trainerId);
+
+        return savedClassGroups.stream()
+                .map(this::toClassGroupDto)
+                .collect(Collectors.toList());
     }
+
 
     private FormationDto toFormationDto(Formation formation) {
         return FormationDto.builder()
