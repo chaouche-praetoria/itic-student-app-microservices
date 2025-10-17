@@ -1,5 +1,7 @@
 package cloud.praetoria.gaming.controllers;
 
+import cloud.praetoria.gaming.dtos.ClassGroupDto;
+import cloud.praetoria.gaming.dtos.FormationDto;
 import cloud.praetoria.gaming.entities.ClassGroup;
 import cloud.praetoria.gaming.entities.Formation;
 import cloud.praetoria.gaming.services.TrainerService;
@@ -14,27 +16,21 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/trainers")
+@RequestMapping("/trainer")
 @RequiredArgsConstructor
 public class TrainerController {
 
     private final TrainerService trainerService;
 
-    @GetMapping("/{trainerId}/class-groups")
-    public ResponseEntity<List<ClassGroup>> getTrainerClassGroups(@PathVariable Long trainerId) {
-        List<ClassGroup> classGroups = trainerService.getTrainerClassGroups(trainerId);
-        return ResponseEntity.ok(classGroups);
-    }
-
     @GetMapping("/{trainerId}/formations")
-    public ResponseEntity<List<Formation>> getTrainerFormations(@PathVariable Long trainerId) {
-        List<Formation> formations = trainerService.getTrainerFormations(trainerId);
+    public ResponseEntity<List<FormationDto>> getTrainerFormations(@PathVariable Long trainerId) {
+        List<FormationDto> formations = trainerService.getTrainerFormations(trainerId);
         return ResponseEntity.ok(formations);
     }
 
-    @GetMapping("/{trainerId}/class-groups-by-formation")
-    public ResponseEntity<Map<Formation, List<ClassGroup>>> getClassGroupsByFormation(@PathVariable Long trainerId) {
-        Map<Formation, List<ClassGroup>> result = trainerService.getClassGroupsByFormation(trainerId);
-        return ResponseEntity.ok(result);
+    @GetMapping("/{trainerId}/class-groups")
+    public ResponseEntity<List<ClassGroupDto>> getTrainerClassGroups(@PathVariable Long trainerId) {
+        List<ClassGroupDto> classGroups = trainerService.getTrainerClassGroups(trainerId);
+        return ResponseEntity.ok(classGroups);
     }
 }

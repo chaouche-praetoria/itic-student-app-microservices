@@ -39,6 +39,15 @@ public class YpareoProxyClient {
                 .block();
     }
 
+    public List<YpareoGroupDto> getGroupsByTrainer(Long trainerId) {
+        return webClient.get()
+                .uri("/groups/trainer/sync/{id}", trainerId)
+                .retrieve()
+                .bodyToFlux(YpareoGroupDto.class)
+                .collectList()
+                .block();
+    }
+
     public List<YpareoGroupDto> getAllGroups() {
         return webClient.get()
                 .uri("/groups")

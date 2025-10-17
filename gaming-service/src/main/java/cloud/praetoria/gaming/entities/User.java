@@ -39,13 +39,7 @@ public class User {
     @Column(nullable = false)
     private int points;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "user_class_groups",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "class_group_id")
-    )
-    private List<ClassGroup> classGroups = new ArrayList<>();
+    private List<Long> classGroupIds;
 
     @OneToMany(mappedBy = "creator", cascade = CascadeType.ALL)
     private List<Assignment> createdAssignments = new ArrayList<>();

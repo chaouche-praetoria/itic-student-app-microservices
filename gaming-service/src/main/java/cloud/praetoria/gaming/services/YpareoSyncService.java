@@ -46,14 +46,14 @@ public class YpareoSyncService {
                         Formation f = new Formation();
                         f.setKeyName(formationKey);
                         f.setDisplayName(dto.getFullLabel() != null ? dto.getFullLabel() : formationKey);
-                        f.setYpareoFormationCode(dto.getYpareoCode());
+                        f.setYpareoFormationCode(dto.getCodeGroup());
                         return formationRepository.save(f);
                     });
 
-            ClassGroup classGroup = classGroupRepository.findById(dto.getYpareoCode())
+            ClassGroup classGroup = classGroupRepository.findById(dto.getCodeGroup())
                     .orElseGet(() -> {
                         ClassGroup newGroup = ClassGroup.builder()
-                                .id(dto.getYpareoCode())
+                                .id(dto.getCodeGroup())
                                 .label(dto.getShortLabel())
                                 .active(true)
                                 .dateDebut(dto.getDateDebut())
@@ -141,20 +141,60 @@ public class YpareoSyncService {
             user.setLastName(dto.getLastName());
             user.setType(UserType.TRAINER);
 
-            if (dto.getCodeGroupe() != null) {
-                Optional<ClassGroup> classGroup = classGroupRepository.findById(dto.getCodeGroupe());
-                if (classGroup.isPresent()) {
-                    user.getClassGroups().add(classGroup.get());
-                } else {
-                    log.warn("ClassGroup {} not found for trainer {}", dto.getCodeGroupe(), dto.getYpareoCode());
-                }
-            }
-
             userRepository.save(user);
 
             if (isNew) created++; else updated++;
         }
 
         log.info("Sync complete. Created: {}, Updated: {}, Ignored: {}", created, updated, ignored);
+    }
+
+    @Transactional
+    public void syncTrainerGroups(Long trainerId) {
+        log.info("Synchronizing groups for trainer ID: {}", trainerId);
+
+        User trainer = userRepository.findById(trainerId)
+                .orElseThrow(() -> new RuntimeException("Trainer not found with ID: " + trainerId));
+
+        if (!trainer.isTrainer()) {
+            throw new RuntimeException("User with ID " + trainerId + " is not a trainer");
+        }
+
+        List<YpareoGroupDto> trainerGroups = ypareoClient.getGroupsByTrainer(trainerId);
+        log.info("Received {} groups for trainer {}", trainerGroups.size(), trainerId);
+
+        trainerGroups.forEach(dto -> {
+            String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
+
+            Formation formation = formationRepository.findByKeyName(formationKey)
+                    .orElseGet(() -> {
+                        Formation f = new Formation();
+                        f.setKeyName(formationKey);
+                        f.setDisplayName(dto.getLabel() != null ? dto.getLabel() : formationKey);
+                        f.setYpareoFormationCode(dto.getCodeGroup());
+                        return formationRepository.save(f);
+                    });
+
+            ClassGroup classGroup = classGroupRepository.findById(dto.getCodeGroup())
+                    .orElseGet(() -> {
+                        ClassGroup newGroup = ClassGroup.builder()
+                                .id(dto.getCodeGroup())
+                                .label(dto.getShortLabel())
+                                .active(true)
+                                .dateDebut(dto.getDateDebut())
+                                .dateFin(dto.getDateFin())
+                                .formation(formation)
+                                .build();
+                        return classGroupRepository.save(newGroup);
+                    });
+
+            classGroup.setLabel(dto.getShortLabel());
+            classGroup.setFormation(formation);
+            classGroup.setDateDebut(dto.getDateDebut());
+            classGroup.setDateFin(dto.getDateFin());
+            classGroupRepository.save(classGroup);
+        });
+
+        log.info("Successfully synchronized {} groups for trainer {}", trainerGroups.size(), trainerId);
     }
 }

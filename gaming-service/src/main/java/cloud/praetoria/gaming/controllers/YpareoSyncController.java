@@ -1,9 +1,7 @@
 package cloud.praetoria.gaming.controllers;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import cloud.praetoria.gaming.services.YpareoSyncService;
 import lombok.RequiredArgsConstructor;
@@ -31,5 +29,11 @@ public class YpareoSyncController {
     public ResponseEntity<String> syncTrainers() {
         ypareoSyncService.syncTrainers();
         return ResponseEntity.ok("Trainers synchronized");
+    }
+
+    @PostMapping("/trainer/{trainerId}/class-groups")
+    public ResponseEntity<String> syncTrainerGroups(@PathVariable Long trainerId) {
+        ypareoSyncService.syncTrainerGroups(trainerId);
+        return ResponseEntity.ok("Trainer groups synchronized successfully");
     }
 }
