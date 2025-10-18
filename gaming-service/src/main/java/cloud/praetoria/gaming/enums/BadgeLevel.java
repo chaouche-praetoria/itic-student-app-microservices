@@ -2,6 +2,8 @@ package cloud.praetoria.gaming.enums;
 
 public enum BadgeLevel {
     
+    NONE("Aucun", "", 0, "#FFFFFF", 1.0),
+    
     BRONZE("Bronze", "🥉", 1, "#CD7F32", 1.0),
     
     SILVER("Argent", "🥈", 2, "#C0C0C0", 1.5),
@@ -44,6 +46,7 @@ public enum BadgeLevel {
     
     public BadgeLevel getNext() {
         return switch (this) {
+            case NONE -> null;
             case BRONZE -> SILVER;
             case SILVER -> GOLD;
             case GOLD -> null;
@@ -51,14 +54,15 @@ public enum BadgeLevel {
     }
     
     public boolean hasNext() {
-        return this != GOLD;
+        return this == BRONZE || this == SILVER;
     }
+    
     public boolean isHigherThan(BadgeLevel other) {
         return this.tier > other.tier;
     }
     
     @Override
     public String toString() {
-        return icon + " " + displayName;
+        return icon.isEmpty() ? displayName : icon + " " + displayName;
     }
 }
