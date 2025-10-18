@@ -26,129 +26,121 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "badges", indexes = { @Index(name = "idx_badge_category", columnList = "category"),
-		@Index(name = "idx_badge_code", columnList = "code", unique = true) })
+@Table(name = "badges", indexes = {
+    @Index(name = "idx_badge_category", columnList = "category"),
+    @Index(name = "idx_badge_code", columnList = "code", unique = true)
+})
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Badge {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
+    private Long id;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String code;
+    
+    @Column(nullable = false, length = 200)
+    private String name;
+    
+    @Column(columnDefinition = "TEXT")
+    private String description;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private BadgeCategory category;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    private BadgeRarity rarity;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private BadgeLevel level;
+    
+    @Column(nullable = false)
+    private Integer xpReward;
+    
+    @Column(length = 500)
+    private String iconUrl;
+    
+    @Column(length = 10)
+    private String emoji;
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean repeatable = false;
+    
+    @Column
+    private Integer maxRepeats;
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean active = true;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@EqualsAndHashCode.Include
-	private Long id;
-
-	@Column(nullable = false, unique = true, length = 100)
-	private String code;
-
-	@Column(nullable = false, length = 200)
-	private String name;
-
-	@Column(columnDefinition = "TEXT")
-	private String description;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 50)
-	private BadgeCategory category;
-
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 50)
-	private BadgeRarity rarity;
-
-	@Enumerated(EnumType.STRING)
-	@Column(length = 50)
-	private BadgeLevel level;
-
-	@Column(nullable = false)
-	private Integer xpReward;
-
-
-	/**
-	 * là je me dit qu'on peut faire en sorte qu'on puisse obtenir plusieurs fois le meme badge
-	 */
-	@Column(nullable = false)
-	@Builder.Default
-	private Boolean repeatable = false;
-
-	/**
-	 * Du coup là c'est le nombre de fois max où on peut obtenir un badge
-	 */
-	@Column
-	private Integer maxRepeats;
-
-	/**
-	 * au cas où
-	 */
-	@Column(nullable = false)
-	@Builder.Default
-	private Boolean active = true;
-
-	/**
-	 * On avait parlé de badge secret, donc j'ai mis ça en attendant
-	 */
-	@Column(nullable = false)
-	@Builder.Default
-	private Boolean visibleBeforeUnlock = true;
-
-	@Column(columnDefinition = "TEXT")
-	private String criteriaJson;
-
-	@Column(nullable = false, updatable = false)
-	@Builder.Default
-	private LocalDateTime createdAt = LocalDateTime.now();
-
-	@Column
-	private LocalDateTime updatedAt;
-
-	/**
-	 * Ici je fais du recursif, si on se dit qu'il ya une sorte de hierarchie, bronze, argent..
-	 */
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "parent_badge_id")
-	private Badge parentBadge;
-
-	/**
-	 * Du coup là c'est le badge suivant argent => or
-	 */
-	@OneToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "next_badge_id")
-	private Badge nextBadge;
-
-	@Column
-	private Integer displayOrder;
-
-	@PreUpdate
-	protected void onUpdate() {
-		updatedAt = LocalDateTime.now();
-	}
-
-	public int getEffectiveXpReward() {
-		double multiplier = 1.0;
-
-		if (rarity != null) {
-			multiplier *= rarity.getXpMultiplier();
-		}
-
-		if (level != null) {
-			multiplier *= level.getXpMultiplier();
-		}
-
-		return (int) (xpReward * multiplier);
-	}
-	
-
-	/**
-	 * Faudra checker que le badge peut encore être obtenu par un utilisateur
-	 */
-	public boolean canBeObtainedAgain(int currentCount) {
-		if (!repeatable) {
-			return currentCount == 0;
-		}
-		if (maxRepeats == null) {
-			return true;
-		}
-		return currentCount < maxRepeats;
-	}
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean visibleBeforeUnlock = true;
+    
+    @Column(columnDefinition = "TEXT")
+    private String criteriaJson;
+    
+    @Column(nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
+    
+    @Column
+    private LocalDateTime updatedAt;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_badge_id")
+    private Badge parentBadge;
+    
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "next_badge_id")
+    private Badge nextBadge;
+    
+    @Column
+    private Integer displayOrder;
+    
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+    
+    public int getEffectiveXpReward() {
+        double multiplier = 1.0;
+        
+        if (rarity != null) {
+            multiplier *= rarity.getXpMultiplier();
+        }
+        
+        if (level != null) {
+            multiplier *= level.getXpMultiplier();
+        }
+        
+        return (int) (xpReward * multiplier);
+    }
+    
+    public String getFullDisplayName() {
+        if (emoji != null && !emoji.isEmpty()) {
+            return emoji + " " + name;
+        }
+        return name;
+    }
+    
+    public boolean canBeObtainedAgain(int currentCount) {
+        if (!repeatable) {
+            return currentCount == 0;
+        }
+        if (maxRepeats == null) {
+            return true;
+        }
+        return currentCount < maxRepeats;
+    }
 }

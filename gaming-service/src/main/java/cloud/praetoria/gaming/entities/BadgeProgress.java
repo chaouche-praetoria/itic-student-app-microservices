@@ -77,15 +77,9 @@ public class BadgeProgress {
     @Builder.Default
     private Boolean active = true;
     
-    /**
-     * A voir si on l'utilise mais j'imagine un badge saisonnier genre, pour un event particulier 
-     */
     @Column
     private Integer daysRemaining;
     
-    /**
-     * Du coup on aurait une date limite pour obtenir le badge
-     */
     @Column
     private LocalDateTime deadline;
     
@@ -136,13 +130,12 @@ public class BadgeProgress {
     
     public long calculateDaysRemaining() {
         if (deadline == null) {
-            return -1; 
+            return -1;
         }
         
         long days = java.time.Duration.between(LocalDateTime.now(), deadline).toDays();
         return Math.max(0, days);
     }
-    
     public void updateDaysRemaining() {
         if (deadline != null) {
             this.daysRemaining = (int) calculateDaysRemaining();

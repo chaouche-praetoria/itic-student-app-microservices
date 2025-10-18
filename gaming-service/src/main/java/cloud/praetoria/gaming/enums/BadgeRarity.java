@@ -1,21 +1,26 @@
 package cloud.praetoria.gaming.enums;
 
-
 public enum BadgeRarity {
     
-    COMMON("Commun", 1.0),
+    COMMON("Commun", "⚪", 1, "#9E9E9E", 1.0),
     
-    RARE("Rare",  1.5),
+    RARE("Rare", "🔵", 2, "#2196F3", 1.5),
     
-    EPIC("Épique", 2.0),
+    EPIC("Épique", "🟣", 3, "#9C27B0", 2.0),
     
-    LEGENDARY("Légendaire",  3.0);
+    LEGENDARY("Légendaire", "🟡", 4, "#FFC107", 3.0);
     
     private final String displayName;
+    private final String icon;
+    private final int tier;
+    private final String colorHex;
     private final double xpMultiplier;
     
-    BadgeRarity(String displayName, double xpMultiplier) {
+    BadgeRarity(String displayName, String icon, int tier, String colorHex, double xpMultiplier) {
         this.displayName = displayName;
+        this.icon = icon;
+        this.tier = tier;
+        this.colorHex = colorHex;
         this.xpMultiplier = xpMultiplier;
     }
     
@@ -23,6 +28,17 @@ public enum BadgeRarity {
         return displayName;
     }
     
+    public String getIcon() {
+        return icon;
+    }
+    
+    public int getTier() {
+        return tier;
+    }
+    
+    public String getColorHex() {
+        return colorHex;
+    }
     
     public double getXpMultiplier() {
         return xpMultiplier;
@@ -38,11 +54,11 @@ public enum BadgeRarity {
     }
     
     public boolean isHigherThan(BadgeRarity other) {
-        return this.xpMultiplier > other.xpMultiplier;
+        return this.tier > other.tier;
     }
     
     @Override
     public String toString() {
-        return displayName;
+        return icon + " " + displayName;
     }
 }

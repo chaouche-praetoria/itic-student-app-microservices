@@ -57,9 +57,6 @@ public class UserBadge {
     @Builder.Default
     private LocalDateTime unlockedAt = LocalDateTime.now();
     
-    /**
-     * Là c'est pour les badges qu'on peut avoir plusieurs fois
-     */
     @Column(nullable = false)
     @Builder.Default
     private Integer obtainCount = 1;
@@ -85,13 +82,19 @@ public class UserBadge {
         this.notificationSeenAt = LocalDateTime.now();
     }
     
-    
     public String getDisplayName() {
-        String baseName = badge.getName();
+        String baseName = badge.getFullDisplayName();
         if (badge.getRepeatable() && obtainCount > 1) {
             return baseName + " x" + obtainCount;
         }
         return baseName;
     }
     
+    public boolean isRecentlyUnlocked() {
+        return unlockedAt.isAfter(LocalDateTime.now().minusHours(24));
+    }
+    
+    public long getDaysSinceUnlock() {
+        return java.time.Duration.between(unlockedAt, LocalDateTime.now()).toDays();
+    }
 }
