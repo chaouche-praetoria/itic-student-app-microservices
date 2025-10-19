@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import cloud.praetoria.auth.entities.User;
+import cloud.praetoria.auth.enums.RoleName;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -51,4 +52,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Transactional
     @Query("UPDATE User u SET u.isFirstLogin = false, u.updatedAt = CURRENT_TIMESTAMP WHERE u.id = :userId")
     void markFirstLoginCompleted(@Param("userId") Long userId);
+    
+    boolean existsByYpareoIdAndRole_RoleName(String ypareoId, RoleName roleName);
+    Optional<User> findByYpareoLoginAndIsActiveTrue(String ypareoLogin);
 }

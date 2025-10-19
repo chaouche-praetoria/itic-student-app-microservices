@@ -7,7 +7,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
-import cloud.praetoria.auth.dtos.StudentInfo;
+import cloud.praetoria.auth.dtos.StudentInfoDto;
+import cloud.praetoria.auth.dtos.TrainerInfoDto;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
@@ -31,11 +32,11 @@ public class YpareoServiceClient {
 
 	@Retry(name = YPAREO_CB, fallbackMethod = "fallbackGetStudentInfo")
 	@CircuitBreaker(name = YPAREO_CB, fallbackMethod = "fallbackGetStudentInfo")
-	public StudentInfo getStudentInfo(String ypareoLogin) {
+	public StudentInfoDto getStudentInfo(String ypareoLogin) {
 			log.info("Fetching student info from Ypareo API Service for login: {}", ypareoLogin);
 
 			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/students/{ypareoLogin}", ypareoLogin).retrieve()
-					.bodyToMono(StudentInfo.class).timeout(Duration.ofSeconds(timeoutSeconds)).doOnSuccess(student -> {
+					.bodyToMono(StudentInfoDto.class).timeout(Duration.ofSeconds(timeoutSeconds)).doOnSuccess(student -> {
 						if (student != null) {
 							log.info("Successfully retrieved student: {} - {}", student.getYpareoId(),
 									student.getFirstName() + " " + student.getLastName());
@@ -56,7 +57,7 @@ public class YpareoServiceClient {
 
 	public boolean validateStudent(String ypareoId) {
 		try {
-			StudentInfo studentInfo = getStudentInfo(ypareoId);
+			StudentInfoDto studentInfo = getStudentInfo(ypareoId);
 			return studentInfo != null && Boolean.TRUE.equals(studentInfo.getIsActive());
 		} catch (Exception e) {
 			log.error("Error validating student: {}", ypareoId, e);
@@ -75,10 +76,46 @@ public class YpareoServiceClient {
 		}
 	}
 
-	public StudentInfo fallbackGetStudentInfo(String ypareoId, Throwable ex) {
+	public StudentInfoDto fallbackGetStudentInfo(String ypareoId, Throwable ex) {
 		log.warn("Fallback activated for student info. Could not fetch from Ypareo for ID: {}. Reason: {}", ypareoId,
 				ex.getMessage());
 		return null;
 	}
 
+	@Retry(name = YPAREO_CB, fallbackMethod = "fallbackGetTeacherInfo")
+	@CircuitBreaker(name = YPAREO_CB, fallbackMethod = "fallbackGetTeacherInfo")
+	public TrainerInfoDto getTrainerInfo(String ypareoLogin) {
+	    log.info("Fetching teacher info from Ypareo API Service for login: {}", ypareoLogin);
+
+	    return webClient.get()
+	            .uri(ypareoServiceBaseUrl + "/api/ypareo/teachers/{ypareoLogin}", ypareoLogin)
+	            .retrieve()
+	            .bodyToMono(TrainerInfoDto.class)
+	            .timeout(Duration.ofSeconds(timeoutSeconds))
+	            .doOnSuccess(trainer -> {
+	                if (trainer != null) {
+	                    log.info("Successfully retrieved teacher: {} - {}", 
+	                    		trainer.getYpareoId(), 
+	                    		trainer.getFirstName() + " " + trainer.getLastName());
+	                } else {
+	                    log.warn("No teacher data returned for Login: {}", ypareoLogin);
+	                }
+	            })
+	            .onErrorResume(WebClientResponseException.class, ex -> {
+	                if (ex.getStatusCode().value() == 404) {
+	                    log.warn("Teacher not found in Ypareo: {}", ypareoLogin);
+	                    return Mono.empty();
+	                } else {
+	                    log.error("Error calling Ypareo API Service: {} - {}", 
+	                        ex.getStatusCode(), ex.getMessage());
+	                    return Mono.error(ex);
+	                }
+	            })
+	            .block();
+	}
+	public TrainerInfoDto fallbackGetTeacherInfo(String ypareoId, Throwable ex) {
+	    log.warn("Fallback activated for teacher info. Could not fetch from Ypareo for ID: {}. Reason: {}", 
+	        ypareoId, ex.getMessage());
+	    return null;
+	}
 }

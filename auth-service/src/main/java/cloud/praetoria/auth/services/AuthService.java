@@ -12,8 +12,10 @@ import cloud.praetoria.auth.dtos.CreatePasswordRequestDto;
 import cloud.praetoria.auth.dtos.LoginRequestDto;
 import cloud.praetoria.auth.dtos.LoginResponseDto;
 import cloud.praetoria.auth.dtos.RefreshTokenRequestDto;
-import cloud.praetoria.auth.dtos.StudentInfo;
-import cloud.praetoria.auth.dtos.UserInfo;
+import cloud.praetoria.auth.dtos.StudentInfoDto;
+import cloud.praetoria.auth.dtos.TrainerInfoDto;
+import cloud.praetoria.auth.dtos.UserInfoDto;
+import cloud.praetoria.auth.dtos.YpareoUserInfo;
 import cloud.praetoria.auth.entities.RefreshToken;
 import cloud.praetoria.auth.entities.Role;
 import cloud.praetoria.auth.entities.User;
@@ -21,7 +23,6 @@ import cloud.praetoria.auth.enums.RoleName;
 import cloud.praetoria.auth.repositories.RefreshTokenRepository;
 import cloud.praetoria.auth.repositories.RoleRepository;
 import cloud.praetoria.auth.repositories.UserRepository;
-import cloud.praetoria.auth.utils.AuthUtils;
 import cloud.praetoria.auth.utils.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,188 +32,277 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthService {
 
-	private final UserRepository userRepository;
-	private final RefreshTokenRepository refreshTokenRepository;
-	private final PasswordEncoder passwordEncoder;
-	private final JwtUtil jwtUtil;
-	private final YpareoServiceClient ypareoServiceClient;
-	private final RoleRepository roleRepository;
-	private final UserUpdateService userUpdateService;
+    private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final YpareoServiceClient ypareoServiceClient;
+    private final RoleRepository roleRepository;
+    private final UserUpdateService userUpdateService;
 
-	private static final int MAX_FAILED_ATTEMPTS = 5;
-	private static final int LOCKOUT_DURATION_MINUTES = 30;
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCKOUT_DURATION_MINUTES = 30;
 
-	@Transactional
-	public LoginResponseDto registerStudent(CreatePasswordRequestDto request) {
-		log.info("Registering new student with Ypareo Login: {}", request.getYpareoLogin());
+    // ========== MÉTHODE GÉNÉRIQUE REFACTORISÉE ==========
+    @Transactional
+    private LoginResponseDto registerUser(
+            CreatePasswordRequestDto request, 
+            RoleName roleName,
+            YpareoUserInfo userInfo) {
+        
+        log.info("Registering new {} with Ypareo Login: {}", roleName, request.getYpareoLogin());
 
-		if (!request.isPasswordsMatch()) {
-			throw new IllegalArgumentException("Passwords do not match");
-		}
+        if (!request.isPasswordsMatch()) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
 
-		if (userRepository.existsByYpareoLogin(request.getYpareoLogin())) {
-			throw new IllegalStateException("Student already registered");
-		}
+        if (userRepository.existsByYpareoLogin(request.getYpareoLogin())) {
+            throw new IllegalStateException(roleName + " already registered");
+        }
 
-		StudentInfo studentInfo;
-		try {
-			studentInfo = ypareoServiceClient.getStudentInfo(request.getYpareoLogin());
-			if (studentInfo == null) {
-				throw new IllegalArgumentException("Student not found in Ypareo system. Please check your Ypareo Login.");
-			}
-		} catch (Exception e) {
-			log.error("Error validating student in Ypareo: {}", request.getYpareoLogin(), e);
+        Role role = roleRepository.findByRoleName(roleName)
+                .orElseThrow(() -> new IllegalStateException("Role " + roleName + " not found"));
 
-			if (ypareoServiceClient.isYpareoServiceAvailable()) {
-				throw new IllegalArgumentException("Student not found in Ypareo system. Please check your Ypareo ID.");
-			} else {
-				log.warn("Ypareo service unavailable. Allowing registration for: {}", request.getYpareoLogin());
-				studentInfo = StudentInfo.builder().ypareoId(request.getYpareoLogin()).firstName("À vérifier")
-						.lastName("À vérifier").email(request.getYpareoLogin() + "@iticparis.com").className("PENDING")
-						.isActive(true).build();
-			}
-		}
+        User user = User.builder()
+                .ypareoId(userInfo.getYpareoId())
+                .ypareoLogin(userInfo.getYpareoLogin())
+                .email(userInfo.getEmail())
+                .firstName(userInfo.getFirstName())
+                .lastName(userInfo.getLastName())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role)
+                .isFirstLogin(true)
+                .isActive(true)
+                .failedLoginAttempts(0)
+                .build();
 
-		Role role = roleRepository.findByRoleName(RoleName.STUDENT)
-				.orElseThrow(() -> new IllegalStateException("Role STUDENT not found"));
+        user = userRepository.save(user);
+        log.info("Successfully registered {}: {} - {}", roleName, user.getYpareoLogin(), user.getFullName());
 
-		User user = User.builder().ypareoId(request.getYpareoLogin()).email(studentInfo.getEmail())
-				.firstName(studentInfo.getFirstName()).lastName(studentInfo.getLastName())
-				.password(passwordEncoder.encode(request.getPassword())).role(role).isFirstLogin(true).isActive(true)
-				.failedLoginAttempts(0).build();
+        String accessToken = jwtUtil.generateAccessToken(user);
+        RefreshToken refreshToken = createRefreshToken(user);
 
-		user = userRepository.save(user);
-		log.info("Successfully registered student: {} - {}", user.getYpareoLogin(), user.getFullName());
+        return LoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtUtil.getExpirationTime())
+                .isFirstLogin(true)
+                .userInfo(mapToUserInfo(user))
+                .build();
+    }
 
-		String accessToken = jwtUtil.generateAccessToken(user);
-		RefreshToken refreshToken = createRefreshToken(user);
+    @Transactional
+    public LoginResponseDto registerStudent(CreatePasswordRequestDto request) {
+        StudentInfoDto studentInfo;
+        
+        try {
+            studentInfo = ypareoServiceClient.getStudentInfo(request.getYpareoLogin());
+            if (studentInfo == null) {
+                throw new IllegalArgumentException("Student not found in Ypareo system. Please check your Ypareo Login.");
+            }
+        } catch (Exception e) {
+            log.error("Error validating student in Ypareo: {}", request.getYpareoLogin(), e);
 
-		return LoginResponseDto.builder().accessToken(accessToken).refreshToken(refreshToken.getToken())
-				.expiresIn(jwtUtil.getExpirationTime()).isFirstLogin(true).userInfo(mapToUserInfo(user)).build();
-	}
+            if (ypareoServiceClient.isYpareoServiceAvailable()) {
+                throw new IllegalArgumentException("Student not found in Ypareo system. Please check your Ypareo ID.");
+            } else {
+                log.warn("Ypareo service unavailable. Allowing registration for: {}", request.getYpareoLogin());
+                studentInfo = StudentInfoDto.builder()
+                        .ypareoId(request.getYpareoLogin())
+                        .ypareoLogin(request.getYpareoLogin())
+                        .firstName("À vérifier")
+                        .lastName("À vérifier")
+                        .email(request.getYpareoLogin() + "@iticparis.com")
+                        .className("PENDING")
+                        .isActive(true)
+                        .build();
+            }
+        }
 
-	@Transactional
-	public LoginResponseDto authenticateStudent(LoginRequestDto request) {
-		log.info("Authenticating student: {}", request.getYpareoLogin());
+        return registerUser(request, RoleName.STUDENT, studentInfo);
+    }
 
-		User user = userRepository.findByYpareoIdAndIsActiveTrue(request.getYpareoLogin()).orElseThrow(() -> {
-			log.warn("Login attempt with non-existent Ypareo ID: {}", request.getYpareoLogin());
-			return new BadCredentialsException("Invalid credentials");
-		});
+    // ========== INSCRIPTION FORMATEUR ==========
+    @Transactional
+    public LoginResponseDto registerTeacher(CreatePasswordRequestDto request) {
+        TrainerInfoDto teacherInfo;
+        
+        try {
+            teacherInfo = ypareoServiceClient.getTrainerInfo(request.getYpareoLogin());
+            if (teacherInfo == null) {
+                throw new IllegalArgumentException("Teacher not found in Ypareo system. Please check your Ypareo Login.");
+            }
+        } catch (Exception e) {
+            log.error("Error validating teacher in Ypareo: {}", request.getYpareoLogin(), e);
 
-		if (!user.isAccountNonLocked()) {
-			log.warn("Login attempt on locked account: {}", request.getYpareoLogin());
-			throw new BadCredentialsException("Account is temporarily locked. Please try again later.");
-		}
+            if (ypareoServiceClient.isYpareoServiceAvailable()) {
+                throw new IllegalArgumentException("Teacher not found in Ypareo system. Please check your Ypareo ID.");
+            } else {
+                log.warn("Ypareo service unavailable. Allowing registration for: {}", request.getYpareoLogin());
+                teacherInfo = TrainerInfoDto.builder()
+                        .ypareoId(request.getYpareoLogin())
+                        .ypareoLogin(request.getYpareoLogin())
+                        .firstName("À vérifier")
+                        .lastName("À vérifier")
+                        .email(request.getYpareoLogin() + "@iticparis.com")
+                        .fonction("PENDING")
+                        .isActive(true)
+                        .build();
+            }
+        }
 
-		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-			handleFailedLogin(user);
-			throw new BadCredentialsException("Invalid credentials");
-		}
+        return registerUser(request, RoleName.TRAINER, teacherInfo);
+    }
 
-		handleSuccessfulLogin(user);
+    @Transactional
+    public LoginResponseDto authenticateUser(LoginRequestDto request) {
+        log.info("Authenticating user: {}", request.getYpareoLogin());
 
-		String accessToken = jwtUtil.generateAccessToken(user);
-		RefreshToken refreshToken = createRefreshToken(user);
+        User user = userRepository.findByYpareoLoginAndIsActiveTrue(request.getYpareoLogin())
+                .orElseThrow(() -> {
+                    log.warn("Login attempt with non-existent Ypareo Login: {}", request.getYpareoLogin());
+                    return new BadCredentialsException("Invalid credentials");
+                });
 
-		log.info("Successfully authenticated student: {}", request.getYpareoLogin());
+        if (!user.isAccountNonLocked()) {
+            log.warn("Login attempt on locked account: {}", request.getYpareoLogin());
+            throw new BadCredentialsException("Account is temporarily locked. Please try again later.");
+        }
 
-		return LoginResponseDto.builder().accessToken(accessToken).refreshToken(refreshToken.getToken())
-				.expiresIn(jwtUtil.getExpirationTime()).isFirstLogin(false).userInfo(mapToUserInfo(user)).build();
-	}
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            handleFailedLogin(user);
+            throw new BadCredentialsException("Invalid credentials");
+        }
 
-	@Transactional
-	public LoginResponseDto refreshAccessToken(RefreshTokenRequestDto request) {
-		log.info("Refreshing access token");
+        handleSuccessfulLogin(user);
 
-		RefreshToken refreshToken = refreshTokenRepository
-				.findValidRefreshToken(request.getRefreshToken(), LocalDateTime.now())
-				.orElseThrow(() -> new BadCredentialsException("Invalid or expired refresh token"));
+        String accessToken = jwtUtil.generateAccessToken(user);
+        RefreshToken refreshToken = createRefreshToken(user);
 
-		User user = refreshToken.getUser();
+        log.info("Successfully authenticated user: {}", request.getYpareoLogin());
 
-		String newAccessToken = jwtUtil.generateAccessToken(user);
+        return LoginResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtUtil.getExpirationTime())
+                .isFirstLogin(false)
+                .userInfo(mapToUserInfo(user))
+                .build();
+    }
 
-		log.info("Successfully refreshed access token for user: {}", user.getYpareoLogin());
+    // ========== ALIAS POUR COMPATIBILITÉ ==========
+    @Transactional
+    public LoginResponseDto authenticateStudent(LoginRequestDto request) {
+        return authenticateUser(request);
+    }
 
-		return LoginResponseDto.builder().accessToken(newAccessToken).refreshToken(refreshToken.getToken())
-				.expiresIn(jwtUtil.getExpirationTime()).isFirstLogin(false).userInfo(mapToUserInfo(user)).build();
-	}
+    // ========== MÉTHODES UTILITAIRES (inchangées) ==========
+    
+    @Transactional
+    public LoginResponseDto refreshAccessToken(RefreshTokenRequestDto request) {
+        log.info("Refreshing access token");
 
-	@Transactional
-	public void logout(String refreshToken) {
-		int affected = refreshTokenRepository.revokeToken(refreshToken);
-		log.info("Nombre de tokens révoqués : {}", affected);
-	}
+        RefreshToken refreshToken = refreshTokenRepository
+                .findValidRefreshToken(request.getRefreshToken(), LocalDateTime.now())
+                .orElseThrow(() -> new BadCredentialsException("Invalid or expired refresh token"));
 
-	@Transactional
-	public void logoutFromAllDevices(String ypareoId) {
-		log.info("Logging out user from all devices: {}", ypareoId);
-		User user = userRepository.findByYpareoId(ypareoId)
-				.orElseThrow(() -> new IllegalArgumentException("User not found"));
-		int affected = refreshTokenRepository.revokeAllUserTokens(user);
-		log.info("Nombre de tokens révoqués : {}", affected);
-	}
+        User user = refreshToken.getUser();
+        String newAccessToken = jwtUtil.generateAccessToken(user);
 
-	public boolean studentExists(String ypareoId) {
-		return userRepository.existsByYpareoId(ypareoId);
-	}
+        log.info("Successfully refreshed access token for user: {}", user.getYpareoLogin());
 
-	public UserInfo getUserInfo(String ypareoId) {
-		User user = userRepository.findByYpareoIdAndIsActiveTrue(ypareoId)
-				.orElseThrow(() -> new IllegalArgumentException("User not found"));
-		return mapToUserInfo(user);
-	}
+        return LoginResponseDto.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(refreshToken.getToken())
+                .expiresIn(jwtUtil.getExpirationTime())
+                .isFirstLogin(false)
+                .userInfo(mapToUserInfo(user))
+                .build();
+    }
 
-	private void handleFailedLogin(User user) {
-		int attempts = user.getFailedLoginAttempts() + 1;
+    @Transactional
+    public void logout(String refreshToken) {
+        int affected = refreshTokenRepository.revokeToken(refreshToken);
+        log.info("Nombre de tokens révoqués : {}", affected);
+    }
 
-		if (attempts >= MAX_FAILED_ATTEMPTS) {
-			LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCKOUT_DURATION_MINUTES);
-			userUpdateService.lockAccount(user.getId(), lockUntil);
-			log.warn("Account locked for user: {} after {} failed attempts", user.getYpareoLogin(), attempts);
-		} else {
-			userUpdateService.updateFailedLoginAttempts(user.getId(), attempts);
-			log.warn("Failed login attempt {} for user: {}", attempts, user.getYpareoLogin());
-		}
-	}
+    @Transactional
+    public void logoutFromAllDevices(String ypareoId) {
+        log.info("Logging out user from all devices: {}", ypareoId);
+        User user = userRepository.findByYpareoId(ypareoId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        int affected = refreshTokenRepository.revokeAllUserTokens(user);
+        log.info("Nombre de tokens révoqués : {}", affected);
+    }
 
-	private void handleSuccessfulLogin(User user) {
-		if (user.getFailedLoginAttempts() > 0 || user.getAccountLockedUntil() != null) {
-			userUpdateService.updateFailedLoginAttempts(user.getId(), 0);
-			userUpdateService.unlockAccount(user.getId());
-		}
+    public boolean studentExists(String ypareoId) {
+        return userRepository.existsByYpareoIdAndRole_RoleName(ypareoId, RoleName.STUDENT);
+    }
 
-		userUpdateService.updateLastLogin(user.getId(), LocalDateTime.now());
+    public boolean teacherExists(String ypareoId) {
+        return userRepository.existsByYpareoIdAndRole_RoleName(ypareoId, RoleName.TRAINER);
+    }
 
-		if (user.getIsFirstLogin()) {
-			userUpdateService.markFirstLoginCompleted(user.getId());
-		}
-	}
+    public UserInfoDto getUserInfo(String ypareoId) {
+        User user = userRepository.findByYpareoIdAndIsActiveTrue(ypareoId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return mapToUserInfo(user);
+    }
 
-	private RefreshToken createRefreshToken(User user) {
-		refreshTokenRepository.revokeAllUserTokens(user);
+    private void handleFailedLogin(User user) {
+        int attempts = user.getFailedLoginAttempts() + 1;
 
-		RefreshToken refreshToken = RefreshToken.builder().token(UUID.randomUUID().toString()).user(user)
-				.createdAt(LocalDateTime.now()).expiresAt(LocalDateTime.now().plusDays(7)).isRevoked(false).build();
+        if (attempts >= MAX_FAILED_ATTEMPTS) {
+            LocalDateTime lockUntil = LocalDateTime.now().plusMinutes(LOCKOUT_DURATION_MINUTES);
+            userUpdateService.lockAccount(user.getId(), lockUntil);
+            log.warn("Account locked for user: {} after {} failed attempts", user.getYpareoLogin(), attempts);
+        } else {
+            userUpdateService.updateFailedLoginAttempts(user.getId(), attempts);
+            log.warn("Failed login attempt {} for user: {}", attempts, user.getYpareoLogin());
+        }
+    }
 
-		return refreshTokenRepository.save(refreshToken);
-	}
+    private void handleSuccessfulLogin(User user) {
+        if (user.getFailedLoginAttempts() > 0 || user.getAccountLockedUntil() != null) {
+            userUpdateService.updateFailedLoginAttempts(user.getId(), 0);
+            userUpdateService.unlockAccount(user.getId());
+        }
 
-	private UserInfo mapToUserInfo(User user) {
-		return UserInfo.builder()
-				.id(user.getId())
-				.ypareoLogin(user.getYpareoLogin())
-				.ypareoId(user.getYpareoId())
-				.email(user.getEmail())
-				.firstName(user.getFirstName())
-				.lastName(user.getLastName())
-				.fullName(user.getFullName())
-				.isFirstLogin(user.getIsFirstLogin())
-				.isActive(user.getIsActive())
-				.lastLogin(user.getLastLogin())
-				.createdAt(user.getCreatedAt())
-				.rolename(user.getRole().getRoleName())
-				.build();
-	}
+        userUpdateService.updateLastLogin(user.getId(), LocalDateTime.now());
+
+        if (user.getIsFirstLogin()) {
+            userUpdateService.markFirstLoginCompleted(user.getId());
+        }
+    }
+
+    private RefreshToken createRefreshToken(User user) {
+        refreshTokenRepository.revokeAllUserTokens(user);
+
+        RefreshToken refreshToken = RefreshToken.builder()
+                .token(UUID.randomUUID().toString())
+                .user(user)
+                .createdAt(LocalDateTime.now())
+                .expiresAt(LocalDateTime.now().plusDays(7))
+                .isRevoked(false)
+                .build();
+
+        return refreshTokenRepository.save(refreshToken);
+    }
+
+    private UserInfoDto mapToUserInfo(User user) {
+        return UserInfoDto.builder()
+                .id(user.getId())
+                .ypareoLogin(user.getYpareoLogin())
+                .ypareoId(user.getYpareoId())
+                .email(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .fullName(user.getFullName())
+                .isFirstLogin(user.getIsFirstLogin())
+                .isActive(user.getIsActive())
+                .lastLogin(user.getLastLogin())
+                .createdAt(user.getCreatedAt())
+                .rolename(user.getRole().getRoleName())
+                .build();
+    }
 }
