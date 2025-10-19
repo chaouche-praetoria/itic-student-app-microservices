@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import cloud.praetoria.ypareo.dtos.YpareoAbsenceDto;
 import cloud.praetoria.ypareo.dtos.YpareoCourseDto;
 import cloud.praetoria.ypareo.dtos.YpareoGroupDto;
 import cloud.praetoria.ypareo.dtos.YpareoGroupTrainerDto;
@@ -173,6 +174,39 @@ public class YpareoClient {
             return List.of();
         }
     }
+    
+    public List<YpareoAbsenceDto> getAbsencesBetweenDates(LocalDate startDate, LocalDate endDate) {
+        String start = startDate.format(DATE_FORMATTER);
+        String end = endDate.format(DATE_FORMATTER);
+        
+        String uri = String.format("%s/r/v1/absences/%s/%s", baseUrl, start, end);
+        log.info("Calling YParéo API for absences: {}", uri);
+
+        try {
+            Map<String, YpareoAbsenceDto> responseMap = webClient.get()
+                    .uri(uri)
+                    .header("X-Auth-Token", xAuthToken)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::is5xxServerError, resp ->
+                            resp.bodyToMono(String.class).defaultIfEmpty("")
+                                    .flatMap(body -> Mono.error(new RuntimeException(
+                                            "Server Error " + resp.statusCode().value() + ": " + body))))
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, YpareoAbsenceDto>>() {})
+                    .block();
+
+            if (responseMap == null) {
+                log.warn("No absences returned from YParéo API");
+                return List.of();
+            }
+
+            return new ArrayList<>(responseMap.values());
+            
+        } catch (Exception e) {
+            log.error("Error fetching absences from YParéo: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
 
   
 }
