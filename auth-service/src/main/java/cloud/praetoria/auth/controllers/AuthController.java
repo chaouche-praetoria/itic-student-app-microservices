@@ -17,7 +17,9 @@ import cloud.praetoria.auth.dtos.CreatePasswordRequestDto;
 import cloud.praetoria.auth.dtos.LoginRequestDto;
 import cloud.praetoria.auth.dtos.LoginResponseDto;
 import cloud.praetoria.auth.dtos.RefreshTokenRequestDto;
+import cloud.praetoria.auth.dtos.RegisterRequestDto;
 import cloud.praetoria.auth.dtos.UserInfoDto;
+import cloud.praetoria.auth.entities.User;
 import cloud.praetoria.auth.services.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class AuthController {
      */
     @PostMapping("/register-student")
     public ResponseEntity<LoginResponseDto> registerStudent(@Valid @RequestBody CreatePasswordRequestDto request) {
+        request.setYpareoLogin(request.getYpareoLogin().toUpperCase().trim());
         return handleRegistration(request, "student", () -> authService.registerStudent(request));
     }
     
@@ -49,6 +52,7 @@ public class AuthController {
      */
     @PostMapping("/register-teacher")
     public ResponseEntity<LoginResponseDto> registerTeacher(@Valid @RequestBody CreatePasswordRequestDto request) {
+        request.setYpareoLogin(request.getYpareoLogin().toUpperCase().trim());
         return handleRegistration(request, "teacher", () -> authService.registerTeacher(request));
     }
     
@@ -61,6 +65,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
         log.info("Login request received for Ypareo Login: {}", request.getYpareoLogin());
+        
+        request.setYpareoLogin(request.getYpareoLogin().toUpperCase().trim());
         
         try {
             LoginResponseDto response = authService.authenticateUser(request);
@@ -130,59 +136,6 @@ public class AuthController {
         }
     }
     
-    // ==================== VÉRIFICATIONS ====================
-    
-    /**
-     * Vérifier si un étudiant existe
-     * Endpoint : GET /api/auth/check-student/{ypareoId}
-     */
-    @GetMapping("/check-student/{ypareoId}")
-    public ResponseEntity<Map<String, Boolean>> checkStudent(@PathVariable String ypareoId) {
-        log.info("Checking if student exists: {}", ypareoId);
-        
-        boolean exists = authService.studentExists(ypareoId);
-        log.info("Student {} exists: {}", ypareoId, exists);
-        
-        return ResponseEntity.ok(Map.of("exists", exists));
-    }
-    
-    /**
-     * Vérifier si un formateur existe
-     * Endpoint : GET /api/auth/check-teacher/{ypareoId}
-     */
-    @GetMapping("/check-teacher/{ypareoId}")
-    public ResponseEntity<Map<String, Boolean>> checkTeacher(@PathVariable String ypareoId) {
-        log.info("Checking if teacher exists: {}", ypareoId);
-        
-        boolean exists = authService.teacherExists(ypareoId);
-        log.info("Teacher {} exists: {}", ypareoId, exists);
-        
-        return ResponseEntity.ok(Map.of("exists", exists));
-    }
-    
-    /**
-     * Vérifier si un utilisateur existe (student ou teacher)
-     * Endpoint : GET /api/auth/check-user/{ypareoId}
-     */
-    @GetMapping("/check-user/{ypareoId}")
-    public ResponseEntity<Map<String, Object>> checkUser(@PathVariable String ypareoId) {
-        log.info("Checking if user exists: {}", ypareoId);
-        
-        boolean isStudent = authService.studentExists(ypareoId);
-        boolean isTeacher = authService.teacherExists(ypareoId);
-        boolean exists = isStudent || isTeacher;
-        
-        String userType = isStudent ? "STUDENT" : (isTeacher ? "TEACHER" : null);
-        
-        log.info("User {} - exists: {}, type: {}", ypareoId, exists, userType);
-        
-        return ResponseEntity.ok(Map.of(
-            "exists", exists,
-            "userType", userType != null ? userType : "NONE",
-            "isStudent", isStudent,
-            "isTeacher", isTeacher
-        ));
-    }
     
     // ==================== INFORMATIONS UTILISATEUR ====================
     
@@ -251,9 +204,6 @@ public class AuthController {
         }
     }
     
-    /**
-     * Interface fonctionnelle pour la factorisation des inscriptions
-     */
     @FunctionalInterface
     private interface RegistrationSupplier {
         LoginResponseDto register();

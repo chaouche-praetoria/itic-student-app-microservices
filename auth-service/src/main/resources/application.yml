@@ -74,7 +74,7 @@ logging:
 
 ypareo:
   service:
-    base-url: http://ypareo-service
+    base-url: http://localhost:8082
     timeout: 10
 
 resilience4j:

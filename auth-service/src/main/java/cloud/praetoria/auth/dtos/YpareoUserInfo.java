@@ -6,5 +6,4 @@ public interface YpareoUserInfo {
     String getFirstName();
     String getLastName();
     String getEmail();
-    Boolean getIsActive();
 }

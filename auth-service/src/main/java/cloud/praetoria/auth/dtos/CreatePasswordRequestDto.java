@@ -1,6 +1,5 @@
 package cloud.praetoria.auth.dtos;
 
-import cloud.praetoria.auth.utils.Constantes;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -15,19 +14,20 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreatePasswordRequestDto {
     
-    @NotBlank(message = Constantes.YPAREO_LOGIN)
-    @Size(min = 3, max = 50, message = Constantes.YPAREO_ID_SIZE)
+    @NotBlank(message = "Ypareo login is required")
+    @Size(min = 2, max = 50, message = "Ypareo login must be between 2 and 50 characters")
+    @Pattern(regexp = "^[A-Za-z]{2,50}$", message = "Ypareo login must contain only letters")
     private String ypareoLogin;
     
-    @NotBlank(message = Constantes.PASSWORD_REQUIRED)
-    @Size(min = 8, max = 50, message = Constantes.PASSWORD_SIZE)
+    @NotBlank(message = "Password is required")
+    @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
     @Pattern(
-        regexp = Constantes.PASSWORD_PATTERN,
-        message = Constantes.PASSWORD_REQUIREMENT
+        regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&.#-])[A-Za-z\\d@$!%*?&.#-]{8,}$",
+        message = "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character"
     )
     private String password;
     
-    @NotBlank(message = Constantes.PASSWORD_CONFIRMATION_REQUIRED)
+    @NotBlank(message = "Password confirmation is required")
     private String confirmPassword;
     
     public boolean isPasswordsMatch() {

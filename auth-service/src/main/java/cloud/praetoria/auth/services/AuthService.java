@@ -1,6 +1,7 @@
 package cloud.praetoria.auth.services;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.security.authentication.BadCredentialsException;
@@ -32,17 +33,18 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AuthService {
 
-    private final UserRepository userRepository;
+  
+	private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final YpareoServiceClient ypareoServiceClient;
     private final RoleRepository roleRepository;
     private final UserUpdateService userUpdateService;
-
+    
+    // ========== CONSTANTES DE SÉCURITÉ ==========
     private static final int MAX_FAILED_ATTEMPTS = 5;
-    private static final int LOCKOUT_DURATION_MINUTES = 30;
-
+  	private static final long LOCKOUT_DURATION_MINUTES = 30;
     // ========== MÉTHODE GÉNÉRIQUE REFACTORISÉE ==========
     @Transactional
     private LoginResponseDto registerUser(
@@ -91,6 +93,7 @@ public class AuthService {
                 .build();
     }
 
+    // ========== INSCRIPTION ÉTUDIANT ==========
     @Transactional
     public LoginResponseDto registerStudent(CreatePasswordRequestDto request) {
         StudentInfoDto studentInfo;
@@ -122,36 +125,30 @@ public class AuthService {
         return registerUser(request, RoleName.STUDENT, studentInfo);
     }
 
-    // ========== INSCRIPTION FORMATEUR ==========
+    // ========== INSCRIPTION FORMATEUR (REFACTORISÉ) ==========
     @Transactional
     public LoginResponseDto registerTeacher(CreatePasswordRequestDto request) {
-        TrainerInfoDto teacherInfo;
+        String normalizedLogin = request.getYpareoLogin().trim().toUpperCase();
         
-        try {
-            teacherInfo = ypareoServiceClient.getTrainerInfo(request.getYpareoLogin());
-            if (teacherInfo == null) {
-                throw new IllegalArgumentException("Teacher not found in Ypareo system. Please check your Ypareo Login.");
-            }
-        } catch (Exception e) {
-            log.error("Error validating teacher in Ypareo: {}", request.getYpareoLogin(), e);
-
-            if (ypareoServiceClient.isYpareoServiceAvailable()) {
-                throw new IllegalArgumentException("Teacher not found in Ypareo system. Please check your Ypareo ID.");
-            } else {
-                log.warn("Ypareo service unavailable. Allowing registration for: {}", request.getYpareoLogin());
-                teacherInfo = TrainerInfoDto.builder()
-                        .ypareoId(request.getYpareoLogin())
-                        .ypareoLogin(request.getYpareoLogin())
-                        .firstName("À vérifier")
-                        .lastName("À vérifier")
-                        .email(request.getYpareoLogin() + "@iticparis.com")
-                        .fonction("PENDING")
-                        .isActive(true)
-                        .build();
-            }
+        log.info("Tentative d'inscription du formateur: {}", normalizedLogin);
+        
+        // 1. Vérifier si déjà inscrit
+        if (userRepository.existsByYpareoLoginAndRole_RoleName(normalizedLogin, RoleName.TRAINER)) {
+            log.warn("Le formateur {} est déjà inscrit", normalizedLogin);
+            throw new IllegalStateException("Ce formateur est déjà inscrit");
         }
-
-        return registerUser(request, RoleName.TRAINER, teacherInfo);
+        
+        // 2. Vérifier existence dans Ypareo
+        TrainerInfoDto trainerInfo = ypareoServiceClient.getTrainerInfo(normalizedLogin);
+        
+        if (trainerInfo == null) {
+            log.warn("Le formateur {} n'existe pas dans Ypareo", normalizedLogin);
+            throw new IllegalArgumentException("Compte formateur inconnu dans le système Ypareo");
+        }
+        
+        // 3. Utiliser la méthode générique
+        log.info("Création du compte formateur pour: {}", normalizedLogin);
+        return registerUser(request, RoleName.TRAINER, trainerInfo);
     }
 
     @Transactional
@@ -190,13 +187,8 @@ public class AuthService {
                 .build();
     }
 
-    // ========== ALIAS POUR COMPATIBILITÉ ==========
-    @Transactional
-    public LoginResponseDto authenticateStudent(LoginRequestDto request) {
-        return authenticateUser(request);
-    }
 
-    // ========== MÉTHODES UTILITAIRES (inchangées) ==========
+    // ========== MÉTHODES UTILITAIRES ==========
     
     @Transactional
     public LoginResponseDto refreshAccessToken(RefreshTokenRequestDto request) {
@@ -290,6 +282,8 @@ public class AuthService {
     }
 
     private UserInfoDto mapToUserInfo(User user) {
+    	
+    	System.out.println("************************** " + user);
         return UserInfoDto.builder()
                 .id(user.getId())
                 .ypareoLogin(user.getYpareoLogin())
@@ -305,4 +299,5 @@ public class AuthService {
                 .rolename(user.getRole().getRoleName())
                 .build();
     }
+    
 }

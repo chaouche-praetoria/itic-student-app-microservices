@@ -11,20 +11,14 @@ import cloud.praetoria.ypareo.entities.Trainer;
 
 @Repository
 public interface TrainerRepository extends JpaRepository<Trainer, Long> {
+   
+	Optional<Trainer> findByYpareoCode(Long ypareoCode);
 
-    /**
-     * Find a trainer by its YParéo unique code.
-     * @param ypareoCode the YParéo personnel code (codePersonnel)
-     * @return Optional<Trainer>
-     */
-    Optional<Trainer> findByYpareoCode(Long ypareoCode);
-
-    /**
-     * Find trainers by last name (case insensitive).
-     * @param lastName trainer's last name
-     * @return list of trainers
-     */
     List<Trainer> findByLastNameIgnoreCase(String lastName);
+    Optional<Trainer> findByLoginIgnoreCase(String login);
+    
+    boolean existsByLogin(String login);
+
 
 
 }

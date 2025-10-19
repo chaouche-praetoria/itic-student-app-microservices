@@ -55,4 +55,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     boolean existsByYpareoIdAndRole_RoleName(String ypareoId, RoleName roleName);
     Optional<User> findByYpareoLoginAndIsActiveTrue(String ypareoLogin);
+
+	boolean existsByYpareoLoginAndRole_RoleName(String ypareoLogin, RoleName roleName);
 }

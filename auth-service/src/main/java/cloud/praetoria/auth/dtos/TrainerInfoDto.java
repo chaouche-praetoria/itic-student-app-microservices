@@ -10,12 +10,36 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TrainerInfoDto implements YpareoUserInfo {
-    private String ypareoId;
-    private String ypareoLogin;
+public class TrainerInfoDto  implements YpareoUserInfo {
+    private String ypareoCode;
+    private String login;
     private String firstName;
     private String lastName;
     private String email;
-    private String fonction;
-    private Boolean isActive;
+    
+    @Override
+    public String getYpareoId() {
+        return ypareoCode; 
+    }
+    
+    @Override
+    public String getYpareoLogin() {
+        return login;
+    }
+    
+    @Override
+    public String getFirstName() {
+        return firstName;
+    }
+    
+    @Override
+    public String getLastName() {
+        return lastName;
+    }
+    
+    @Override
+    public String getEmail() {
+        return email;
+    }
+
 }

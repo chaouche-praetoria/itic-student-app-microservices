@@ -1,9 +1,12 @@
 package cloud.praetoria.auth.services;
 
 import java.time.Duration;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -35,7 +38,7 @@ public class YpareoServiceClient {
 	public StudentInfoDto getStudentInfo(String ypareoLogin) {
 			log.info("Fetching student info from Ypareo API Service for login: {}", ypareoLogin);
 
-			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/students/{ypareoLogin}", ypareoLogin).retrieve()
+			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/students/login/{ypareoLogin}", ypareoLogin).retrieve()
 					.bodyToMono(StudentInfoDto.class).timeout(Duration.ofSeconds(timeoutSeconds)).doOnSuccess(student -> {
 						if (student != null) {
 							log.info("Successfully retrieved student: {} - {}", student.getYpareoId(),
@@ -81,41 +84,72 @@ public class YpareoServiceClient {
 				ex.getMessage());
 		return null;
 	}
-
-	@Retry(name = YPAREO_CB, fallbackMethod = "fallbackGetTeacherInfo")
-	@CircuitBreaker(name = YPAREO_CB, fallbackMethod = "fallbackGetTeacherInfo")
-	public TrainerInfoDto getTrainerInfo(String ypareoLogin) {
-	    log.info("Fetching teacher info from Ypareo API Service for login: {}", ypareoLogin);
-
-	    return webClient.get()
-	            .uri(ypareoServiceBaseUrl + "/api/ypareo/teachers/{ypareoLogin}", ypareoLogin)
-	            .retrieve()
-	            .bodyToMono(TrainerInfoDto.class)
-	            .timeout(Duration.ofSeconds(timeoutSeconds))
-	            .doOnSuccess(trainer -> {
-	                if (trainer != null) {
-	                    log.info("Successfully retrieved teacher: {} - {}", 
-	                    		trainer.getYpareoId(), 
-	                    		trainer.getFirstName() + " " + trainer.getLastName());
-	                } else {
-	                    log.warn("No teacher data returned for Login: {}", ypareoLogin);
-	                }
-	            })
-	            .onErrorResume(WebClientResponseException.class, ex -> {
-	                if (ex.getStatusCode().value() == 404) {
-	                    log.warn("Teacher not found in Ypareo: {}", ypareoLogin);
-	                    return Mono.empty();
-	                } else {
-	                    log.error("Error calling Ypareo API Service: {} - {}", 
-	                        ex.getStatusCode(), ex.getMessage());
-	                    return Mono.error(ex);
-	                }
-	            })
-	            .block();
+	public TrainerInfoDto fallbackGetTrainerInfo(String ypareoId, Throwable ex) {
+		log.warn("Fallback activated for trainer info. Could not fetch from Ypareo for ID: {}. Reason: {}", ypareoId,
+				ex.getMessage());
+		return null;
 	}
-	public TrainerInfoDto fallbackGetTeacherInfo(String ypareoId, Throwable ex) {
-	    log.warn("Fallback activated for teacher info. Could not fetch from Ypareo for ID: {}. Reason: {}", 
-	        ypareoId, ex.getMessage());
-	    return null;
+	
+	
+	@Retry(name = YPAREO_CB, fallbackMethod = "fallbackGetTrainerInfo")
+	@CircuitBreaker(name = YPAREO_CB, fallbackMethod = "fallbackGetTrainerInfo")
+	public TrainerInfoDto getTrainerInfo(String ypareoLogin) {
+			log.info("Fetching Trainer info from Ypareo API Service for login: {}", ypareoLogin);
+
+			return webClient.get().uri(ypareoServiceBaseUrl + "/api/ypareo/trainers/login/{ypareoLogin}", ypareoLogin).retrieve()
+					.bodyToMono(TrainerInfoDto.class).timeout(Duration.ofSeconds(timeoutSeconds)).doOnSuccess(trainer -> {
+						if (trainer != null) {
+							log.info("Successfully retrieved trainer: {} - {}", trainer.getFirstName() + " " + trainer.getLastName());
+						} else {
+							log.warn("No trainer data returned for Login: {}", ypareoLogin);
+						}
+					}).onErrorResume(WebClientResponseException.class, ex -> {
+						if (ex.getStatusCode().value() == 404) {
+							log.warn("trainer not found in Ypareo: {}", ypareoLogin);
+							return Mono.empty();
+						} else {
+							log.error("Error calling Ypareo API Service: {} - {}", ex.getStatusCode(), ex.getMessage());
+							return Mono.error(ex);
+						}
+					}).block();
+
+	}
+	
+	/*
+    public TrainerInfoDto getTrainerInfo2(String login) {
+        String url = ypareoServiceBaseUrl + "/api/ypareo/trainers/" + login;
+        
+        try {
+            ResponseEntity<TrainerInfoDto> response = restTemplate.getForEntity(
+                url, 
+                TrainerInfoDto.class
+            );
+            
+            return response.getBody();
+            
+        } catch (HttpClientErrorException.NotFound e) {
+            // Formateur non trouvé dans ypareo-service
+            return null;
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors de la récupération des infos formateur: " + e.getMessage());
+        }
+    }
+    
+    public boolean existsTrainer(String login) {
+        String url = ypareoServiceBaseUrl + "/api/ypareo/trainers/exist/" + login;
+        
+        try {
+            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            Map<String, Boolean> body = response.getBody();
+            return body != null && body.getOrDefault("exists", false);
+            
+        } catch (Exception e) {
+            return false;
+        }
+    }
+*/
+	public boolean fallbackExistsTrainer(String ypareoLogin, Throwable ex) {
+	    log.warn("Fallback activated for exists check. Reason: {}", ex.getMessage());
+	    return false;
 	}
 }

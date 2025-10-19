@@ -63,17 +63,26 @@ public class SecurityConfig {
             
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/api/auth/register",
-                    "/api/auth/login", 
-                    "/api/auth/refresh",
-                    "/api/auth/check-student/**",
-                    "/api/auth/test/**",
-                    "/api/auth/health",
-                    "/actuator/**",
-                    "/api/auth/admin/**"
-                ).permitAll()
-                
-                .anyRequest().authenticated()
+                		   "/api/auth/register",
+                           "/api/auth/register-student",
+                           "/api/auth/register-teacher",
+                           
+                           "/api/auth/login", 
+                           
+                           "/api/auth/refresh",
+                           
+                           "/api/auth/check-student/**",
+                           "/api/auth/check-teacher/**",
+                           "/api/auth/check-user/**",
+                           
+                           "/api/auth/health",
+                           "/actuator/**",
+                           
+                           "/api/auth/admin/**",
+                           
+                           "/api/auth/test/**"
+                       ).permitAll()
+                       .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .httpBasic(AbstractHttpConfigurer::disable)
