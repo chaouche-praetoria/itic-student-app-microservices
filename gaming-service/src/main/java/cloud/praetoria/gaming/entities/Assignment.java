@@ -52,6 +52,9 @@ public class Assignment {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
     private LocalDateTime dueDate;
 
     @Column(nullable = false)
@@ -72,11 +75,17 @@ public class Assignment {
     private List<PointsAward> pointsAwards = new ArrayList<>();
 
     @PrePersist
-    @PreUpdate
-    public void validateCreator() {
-        if (!creator.isTrainer()) {
+    public void onCreate() {
+        if (creator == null || !creator.isTrainer()) {
             throw new IllegalArgumentException("Only a trainer can create an assignment");
         }
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
 }
