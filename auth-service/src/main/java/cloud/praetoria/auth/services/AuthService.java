@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.UUID;
 
+import cloud.praetoria.auth.exceptions.ApiException;
+import cloud.praetoria.auth.exceptions.ErrorCode;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -135,7 +137,7 @@ public class AuthService {
         // 1. Vérifier si déjà inscrit
         if (userRepository.existsByYpareoLoginAndRole_RoleName(normalizedLogin, RoleName.TRAINER)) {
             log.warn("Le formateur {} est déjà inscrit", normalizedLogin);
-            throw new IllegalStateException("Ce formateur est déjà inscrit");
+            throw new ApiException(ErrorCode.TEACHER_ALREADY_REGISTERED);
         }
         
         // 2. Vérifier existence dans Ypareo
