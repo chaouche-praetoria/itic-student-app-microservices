@@ -15,7 +15,7 @@ public class LoginResponseDto {
     private String refreshToken;
     private Long expiresIn;
     private Boolean isFirstLogin;
-    private UserInfo userInfo;
+    private UserInfoDto userInfo;
     
     @Builder.Default
     private String tokenType = "Bearer";

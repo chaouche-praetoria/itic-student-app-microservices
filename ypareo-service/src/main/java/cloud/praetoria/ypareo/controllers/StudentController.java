@@ -47,6 +47,20 @@ public class StudentController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+    
+    @GetMapping("/email/{email}")
+    public ResponseEntity<StudentDto> getStudentByEmail(@PathVariable String email) {
+    	return studentService.getStudentByYpareoEmail(email)
+    			.map(ResponseEntity::ok)
+    			.orElse(ResponseEntity.notFound().build());
+    }
+    
+    @GetMapping("/login/{login}")
+    public ResponseEntity<StudentDto> getStudentByLogin(@PathVariable String login) {
+    	return studentService.getStudentByYpareoLogin(login)
+    			.map(ResponseEntity::ok)
+    			.orElse(ResponseEntity.notFound().build());
+    }
 
     @GetMapping("/sync")
     public ResponseEntity<List<StudentDto>> syncStudentsFromYpareo() {

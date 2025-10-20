@@ -13,6 +13,7 @@ import cloud.praetoria.ypareo.dtos.TrainerDto;
 import cloud.praetoria.ypareo.dtos.YpareoTrainerDto;
 import cloud.praetoria.ypareo.entities.Trainer;
 import cloud.praetoria.ypareo.repositories.TrainerRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,30 +21,31 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class TrainerService {
+	
+	 private final TrainerRepository trainerRepository;
+	    private final YpareoClient ypareoClient;
 
-    private final TrainerRepository trainerRepository;
-    private final YpareoClient ypareoClient;
-
-    /**
+	 /**
      * Synchronise tous les formateurs depuis l'API YParéo
      */
     @CacheEvict(value = {"trainers", "trainer"}, allEntries = true)
+    @Transactional
     public List<TrainerDto> syncTrainersFromYpareo() {
         log.info("Starting synchronization of trainers from YParéo...");
 
         List<YpareoTrainerDto> remoteTrainers = ypareoClient.getAllTrainers();
+        
         log.info("Received {} trainers from YParéo API (raw)", remoteTrainers.size());
 
-        // Pas besoin de filtrer par email
-        List<Trainer> entities = remoteTrainers.stream().map(dto -> {
+        List<Trainer> entities = remoteTrainers.stream().filter(dto -> dto.getPlusUtilise()!= 1 && dto.getLogin() != null).map(dto -> {
+        	
             Trainer trainer = trainerRepository.findByYpareoCode(dto.getCodePersonnel())
                     .orElse(new Trainer());
-
-            
             trainer.setYpareoCode(dto.getCodePersonnel());
             trainer.setFirstName(dto.getPrenomPersonnel());
             trainer.setLastName(dto.getNomPersonnel());
-
+            trainer.setLogin(dto.getLogin());
+            
             return trainer;
         }).collect(Collectors.toList());
 
@@ -54,6 +56,7 @@ public class TrainerService {
     }
 
     @Cacheable(value = "trainers")
+    @Transactional
     public List<TrainerDto> getAllTrainers() {
         log.info("Fetching all trainers from database...");
         return trainerRepository.findAll().stream()
@@ -62,23 +65,61 @@ public class TrainerService {
     }
 
     @Cacheable(value = "trainer", key = "#id")
+    @Transactional
     public Optional<TrainerDto> getTrainerById(Long id) {
         log.info("Fetching trainer by ID: {}", id);
         return trainerRepository.findById(id).map(this::toDto);
     }
 
     @Cacheable(value = "trainer", key = "#ypareoCode")
+    @Transactional
     public Optional<TrainerDto> getTrainerByYpareoCode(Long ypareoCode) {
         log.info("Fetching trainer by YParéo code: {}", ypareoCode);
         return trainerRepository.findByYpareoCode(ypareoCode).map(this::toDto);
     }
-
-    private TrainerDto toDto(Trainer t) {
+    /**
+     * Récupère un formateur par son login Ypareo
+     * Filtre automatiquement les formateurs avec plusUtilise = 1
+     */
+    public Optional<TrainerDto> getTrainerByLogin(String login) {
+        log.info("Récupération du formateur avec login: {}", login);
+        
+        
+        Optional<Trainer> trainerOpt = trainerRepository.findByLoginIgnoreCase(login);
+        
+        if (trainerOpt.isEmpty()) {
+            log.warn("Aucun formateur trouvé avec le login: {}", login);
+            return Optional.empty();
+        }
+        
+        Trainer trainer = trainerOpt.get();
+        
+        
+        log.info("Formateur {} trouvé et actif", login);
+        return Optional.of(toDto(trainer));
+    }
+    
+    /**
+     * Vérifie si un formateur existe par son login (actif uniquement)
+     */
+    public boolean existsByLogin(String login) {
+        Optional<Trainer> trainerOpt = trainerRepository.findByLoginIgnoreCase(login);
+        
+        if (trainerOpt.isEmpty()) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    // Méthode de conversion existante
+    private TrainerDto toDto(Trainer trainer) {
         return TrainerDto.builder()
-                .id(t.getYpareoCode())
-                .ypareoCode(t.getYpareoCode())
-                .firstName(t.getFirstName())
-                .lastName(t.getLastName())
+                .id(trainer.getYpareoCode())
+                .ypareoCode(trainer.getYpareoCode())
+                .login(trainer.getLogin())
+                .firstName(trainer.getFirstName())
+                .lastName(trainer.getLastName())
                 .build();
     }
 }

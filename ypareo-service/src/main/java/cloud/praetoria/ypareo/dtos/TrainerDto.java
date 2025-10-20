@@ -14,4 +14,6 @@ public class TrainerDto {
     private Long ypareoCode;
     private String firstName;
     private String lastName;
+    private String login;  
+    private Boolean isActive;
 }

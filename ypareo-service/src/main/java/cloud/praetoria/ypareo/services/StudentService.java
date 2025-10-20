@@ -112,6 +112,12 @@ public class StudentService {
         return studentRepository.findByYpareoCode(ypareoCode).map(this::toDto);
     }
     
+    @Cacheable(value = "student", key = "#ypareoEmail")
+    public Optional<StudentDto> getStudentByYpareoEmail(String email) {
+    	log.info("Fetching student by YParéo email: {}", email);
+    	return studentRepository.findByEmail(email).map(this::toDto);
+    }
+    
 
     @Cacheable(value = "students_group", key = "#groupId")
     public List<StudentDto> getStudentsByGroup(Long groupId) {
@@ -124,12 +130,20 @@ public class StudentService {
     private StudentDto toDto(Student s) {
         return StudentDto.builder()
                 .id(s.getId())
+                .login(s.getLogin())
                 .ypareoCode(s.getYpareoCode())
                 .firstName(s.getFirstName())
                 .lastName(s.getLastName())
                 .email(s.getEmail())
-                .codeGroup(s.getGroup() != null ? s.getGroup().getCodeGroupe() : null)  // ✅ Extraire codeGroupe
+                .codeGroup(s.getGroup() != null ? s.getGroup().getCodeGroupe() : null) 
                 .build();
     }
+
+
+	public Optional<StudentDto> getStudentByYpareoLogin(String login) {
+    	log.info("Fetching student by YParéo login: {}", login);
+    	return studentRepository.findByLogin(login).map(this::toDto);
+    }
+    
 
 }

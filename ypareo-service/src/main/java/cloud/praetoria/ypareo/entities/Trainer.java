@@ -39,6 +39,9 @@ public class Trainer {
     private String lastName;
 
     private String firstName;
+    
+    @Column(name = "login", nullable = false, unique = true, length = 50)  
+    private String login;  
 
     @OneToMany(mappedBy = "trainer", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<Course> courses;
@@ -46,7 +49,7 @@ public class Trainer {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-
+    
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

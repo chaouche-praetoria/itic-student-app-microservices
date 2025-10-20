@@ -3,11 +3,13 @@ package cloud.praetoria.ypareo.repositories;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import cloud.praetoria.ypareo.dtos.YpareoStudentDto;
 import cloud.praetoria.ypareo.entities.Student;
 
 @Repository
@@ -42,4 +44,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     
     @Query("SELECT s FROM Student s LEFT JOIN FETCH s.group")
     List<Student> findAllWithGroup();
+
+	 Optional<Student> findByEmail(String email);
+	 Optional<Student> findByLogin(String login);
+
 }

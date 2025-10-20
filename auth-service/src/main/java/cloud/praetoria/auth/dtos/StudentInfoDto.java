@@ -1,23 +1,20 @@
 package cloud.praetoria.auth.dtos;
 
-import cloud.praetoria.auth.entities.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class StudentInfo {
-
-	private String ypareoId;
-    private String email;
+public class StudentInfoDto implements YpareoUserInfo {
+    private String ypareoId;
+    private String ypareoLogin;
     private String firstName;
     private String lastName;
+    private String email;
     private String className;
     private Boolean isActive;
-    private String phoneNumber;
-    private Role roleName;
 }

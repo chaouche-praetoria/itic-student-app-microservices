@@ -7,4 +7,6 @@ public class YpareoTrainerDto {
     private Long codePersonnel;
     private String nomPersonnel;
     private String prenomPersonnel;
+    private String login;
+    private Integer plusUtilise; 
 }
