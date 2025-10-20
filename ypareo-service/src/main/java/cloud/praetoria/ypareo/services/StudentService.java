@@ -122,7 +122,7 @@ public class StudentService {
     @Cacheable(value = "students_group", key = "#groupId")
     public List<StudentDto> getStudentsByGroup(Long groupId) {
         log.info("Fetching students from group ID: {}", groupId);
-        return studentRepository.findByGroup_Id(groupId).stream()
+        return studentRepository.findByGroupIdWithGroup(groupId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
