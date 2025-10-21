@@ -68,8 +68,8 @@ public class Assignment {
     private User creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id", nullable = false)
-    private ClassGroup classGroup;
+    @JoinColumn(name = "formation_id", nullable = false)
+    private Formation formation;
 
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL)
     private List<PointsAward> pointsAwards = new ArrayList<>();

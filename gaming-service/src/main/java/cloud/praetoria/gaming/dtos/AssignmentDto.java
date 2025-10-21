@@ -21,5 +21,6 @@ public class AssignmentDto {
     private Boolean completed;
     private Boolean active;
     private Long creatorId;
-    private Long classGroupId;
+    private Long formationId;
+    private String formationName;
 }

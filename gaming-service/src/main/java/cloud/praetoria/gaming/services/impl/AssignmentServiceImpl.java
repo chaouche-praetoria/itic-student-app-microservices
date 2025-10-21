@@ -2,18 +2,20 @@ package cloud.praetoria.gaming.services.impl;
 
 import java.util.List;
 
-import cloud.praetoria.gaming.services.interfaces.AssignmentServiceInterface;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import cloud.praetoria.gaming.dtos.*;
+import cloud.praetoria.gaming.dtos.AssignmentCreateRequestDto;
+import cloud.praetoria.gaming.dtos.AssignmentDto;
+import cloud.praetoria.gaming.dtos.AssignmentUpdateRequestDto;
 import cloud.praetoria.gaming.entities.Assignment;
-import cloud.praetoria.gaming.entities.ClassGroup;
+import cloud.praetoria.gaming.entities.Formation;
 import cloud.praetoria.gaming.entities.User;
 import cloud.praetoria.gaming.mappers.AssignmentMapper;
 import cloud.praetoria.gaming.repositories.AssignmentRepository;
-import cloud.praetoria.gaming.repositories.ClassGroupRepository;
+import cloud.praetoria.gaming.repositories.FormationRepository;
 import cloud.praetoria.gaming.repositories.UserRepository;
+import cloud.praetoria.gaming.services.interfaces.AssignmentServiceInterface;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -23,7 +25,7 @@ public class AssignmentServiceImpl implements AssignmentServiceInterface {
 
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
-    private final ClassGroupRepository classGroupRepository;
+    private final FormationRepository formationRepository;
 
     @Override
     public AssignmentDto create(AssignmentCreateRequestDto request) {
@@ -33,8 +35,8 @@ public class AssignmentServiceImpl implements AssignmentServiceInterface {
             throw new SecurityException("Only a trainer can create an assignment");
         }
 
-        ClassGroup group = classGroupRepository.findById(request.getClassGroupId())
-                .orElseThrow(() -> new IllegalArgumentException("Class group not found: " + request.getClassGroupId()));
+        Formation formation = formationRepository.findById(request.getFormationId())
+                .orElseThrow(() -> new IllegalArgumentException("formation not found: " + request.getFormationId()));
 
         Assignment a = Assignment.builder()
                 .title(request.getTitle())
@@ -45,7 +47,7 @@ public class AssignmentServiceImpl implements AssignmentServiceInterface {
                 .completed(false)
                 .active(true)
                 .creator(creator)
-                .classGroup(group)
+                .formation(formation)
                 .build();
 
         Assignment saved = assignmentRepository.save(a);
@@ -62,13 +64,27 @@ public class AssignmentServiceImpl implements AssignmentServiceInterface {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AssignmentDto> listByClass(Long classGroupId) {
+    public List<AssignmentDto> listByClass(Long FormationId) {
         // Vérifie que la classe existe (retourne 404 si inexistante)
-        classGroupRepository.findById(classGroupId)
-                .orElseThrow(() -> new IllegalArgumentException("Class group not found: " + classGroupId));
+    	formationRepository.findById(FormationId)
+                .orElseThrow(() -> new IllegalArgumentException("Class group not found: " + FormationId));
 
-        return assignmentRepository.findAllByClassGroupIdOrderByCreatedAtDesc(classGroupId)
+        return assignmentRepository.findAllByClassGroupIdOrderByCreatedAtDesc(FormationId)
                 .stream().map(AssignmentMapper::toDto).toList();
+    }
+    
+    /**
+     * Liste les devoirs d'une formation
+     */
+    @Transactional(readOnly = true)
+    public List<AssignmentDto> listByFormation(Long formationId) {
+        formationRepository.findById(formationId)
+                .orElseThrow(() -> new IllegalArgumentException("Formation not found: " + formationId));
+
+        return assignmentRepository.findAllByFormationIdOrderByCreatedAtDesc(formationId)
+                .stream()
+                .map(AssignmentMapper::toDto)
+                .toList();
     }
 
     @Override

@@ -35,6 +35,6 @@ public class AssignmentCreateRequestDto {
     private Long creatorId;
 
     @NotNull
-    @Schema(example = "100", description = "ID de la classe")
-    private Long classGroupId;
+    @Schema(example = "1", description = "ID de la formation (tous les groupes ALT + INIT)")
+    private Long formationId;
 }

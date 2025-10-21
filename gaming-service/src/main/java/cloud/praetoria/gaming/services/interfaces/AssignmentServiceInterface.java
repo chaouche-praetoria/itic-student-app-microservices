@@ -14,4 +14,5 @@ public interface AssignmentServiceInterface {
     void delete(Long id);
     AssignmentDto markCompleted(Long id, boolean completed);
     AssignmentDto setActive(Long id, boolean active);
+    List<AssignmentDto> listByFormation(Long formationId);
 }

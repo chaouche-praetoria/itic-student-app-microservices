@@ -44,12 +44,12 @@ public class AssignmentController {
         return ResponseEntity.ok(assignmentServiceInterface.getById(id));
     }
 
-    @Operation(summary = "Lister les devoirs d'une classe")
+    @Operation(summary = "Lister les devoirs d'une formation")
     @ApiResponse(responseCode = "200")
-    @GetMapping("/classes/{classGroupId}/assignments")
-    public ResponseEntity<List<AssignmentDto>> listByClass(
-            @Parameter(description = "ID de la classe") @PathVariable Long classGroupId) {
-        return ResponseEntity.ok(assignmentServiceInterface.listByClass(classGroupId));
+    @GetMapping("/formations/{formationId}/assignments")
+    public ResponseEntity<List<AssignmentDto>> listByFormation(
+            @Parameter(description = "ID de la formation") @PathVariable Long formationId) {
+        return ResponseEntity.ok(assignmentServiceInterface.listByFormation(formationId));
     }
 
     @Operation(summary = "Mettre à jour un devoir")

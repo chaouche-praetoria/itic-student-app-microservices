@@ -19,7 +19,8 @@ public final class AssignmentMapper {
                 .completed(a.getCompleted())
                 .active(a.getActive())
                 .creatorId(a.getCreator() != null ? a.getCreator().getId() : null)
-                .classGroupId(a.getClassGroup() != null ? a.getClassGroup().getId() : null)
+                .formationId(a.getFormation() != null ? a.getFormation().getId() : null)
+                .formationName(a.getFormation() != null ? a.getFormation().getDisplayName() : null)
                 .build();
     }
 }
