@@ -53,10 +53,6 @@ public class ClassGroup {
     @Builder.Default
     private boolean active = true;
     
-    @OneToMany(mappedBy = "classGroup", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Assignment> assignments = new ArrayList<>();
-    
     @ManyToMany(mappedBy = "classGroups")
     @JsonIgnore
     @Builder.Default

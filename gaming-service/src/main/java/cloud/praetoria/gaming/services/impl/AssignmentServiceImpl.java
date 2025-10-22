@@ -62,16 +62,6 @@ public class AssignmentServiceImpl implements AssignmentServiceInterface {
         return AssignmentMapper.toDto(a);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<AssignmentDto> listByClass(Long FormationId) {
-        // Vérifie que la classe existe (retourne 404 si inexistante)
-    	formationRepository.findById(FormationId)
-                .orElseThrow(() -> new IllegalArgumentException("Class group not found: " + FormationId));
-
-        return assignmentRepository.findAllByClassGroupIdOrderByCreatedAtDesc(FormationId)
-                .stream().map(AssignmentMapper::toDto).toList();
-    }
     
     /**
      * Liste les devoirs d'une formation
