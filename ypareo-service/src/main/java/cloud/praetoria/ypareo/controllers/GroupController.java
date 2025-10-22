@@ -7,9 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import cloud.praetoria.ypareo.dtos.FormationGroupDto;
 import cloud.praetoria.ypareo.dtos.GroupDto;
 import cloud.praetoria.ypareo.services.GroupService;
 import lombok.RequiredArgsConstructor;
@@ -50,9 +50,22 @@ public class GroupController {
     
     @GetMapping("/trainer/sync/{id}")
     public ResponseEntity<List<GroupDto>> syncGroupsOfTrainerFromYpareo(@PathVariable Long id) {
-    	System.out.println("********** test ************");
     	log.info("Request received: GET /groups/trainer/sync");
     	List<GroupDto> synced = groupService.syncGroupsOfTrainerFromYpareo(id);
     	return ResponseEntity.ok(synced);
     }
+    
+    /**
+     * GET /api/ypareo/groups/trainer/{trainerId}/formations
+     */
+    @GetMapping("/trainer/{trainerId}/formations")
+    public ResponseEntity<List<FormationGroupDto>> getGroupedFormations(@PathVariable Long trainerId) {
+        log.info("Request: GET /api/ypareo/groups/trainer/{}/formations", trainerId);
+        
+        List<FormationGroupDto> formations = groupService.getGroupedFormationsByTrainer(trainerId);
+        
+        log.info("Returning {} formations regroupées for trainer {}", formations.size(), trainerId);
+        return ResponseEntity.ok(formations);
+    }
+    
 }
