@@ -1,22 +1,8 @@
 package cloud.praetoria.gaming.entities;
 
 import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import lombok.*;
 
 @Data
 @NoArgsConstructor
@@ -25,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "points_awards")
 public class PointsAward {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -32,7 +19,7 @@ public class PointsAward {
     @Column(nullable = false)
     private Integer pointsEarned;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime awardedAt;
 
     @Column(columnDefinition = "TEXT")
@@ -50,24 +37,35 @@ public class PointsAward {
     @JoinColumn(name = "assignment_id", nullable = false)
     private Assignment assignment;
 
+    
     @PrePersist
+    public void onCreate() {
+        this.awardedAt = LocalDateTime.now();
+        validate(); 
+    }
+
     @PreUpdate
-    public void validate() {
-        if (!grader.isTrainer()) {
+    public void onUpdate() {
+        validate(); 
+    }
+
+    private void validate() {
+        if (grader == null || !grader.isTrainer()) {
             throw new IllegalArgumentException("Only a trainer can assign points");
         }
-        if (!student.isStudent()) {
+        if (student == null || !student.isStudent()) {
             throw new IllegalArgumentException("Points can only be awarded to students");
+        }
+        if (assignment == null) {
+            throw new IllegalArgumentException("Assignment must not be null");
+        }
+        if (pointsEarned == null || pointsEarned < 0) {
+            throw new IllegalArgumentException("Points cannot be negative or null");
         }
         if (pointsEarned > assignment.getMaxPoints()) {
             throw new IllegalArgumentException(
                 "Points (" + pointsEarned + ") cannot exceed max points (" + assignment.getMaxPoints() + ")"
             );
         }
-        if (pointsEarned < 0) {
-            throw new IllegalArgumentException("Points cannot be negative");
-        }
     }
-
 }
-
