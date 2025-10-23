@@ -1,4 +1,3 @@
-// src/main/java/cloud/praetoria/gaming/controllers/AssignmentController.java
 package cloud.praetoria.gaming.controllers;
 
 import java.net.URI;
