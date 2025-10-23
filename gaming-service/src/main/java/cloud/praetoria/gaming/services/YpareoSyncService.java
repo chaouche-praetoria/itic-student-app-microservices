@@ -155,7 +155,7 @@ public class YpareoSyncService {
             }
 
             Optional<User> existing = userRepository.findById(dto.getYpareoCode());
-            if (existing.isPresent() && existing.get().getType() == UserType.STUDENT) {
+            if (existing.isPresent() && existing.get().getType() == UserType.TRAINER) {
                 log.warn("User {} already exists as STUDENT, ignored for trainer sync", dto.getYpareoCode());
                 ignored++;
                 continue;
@@ -204,25 +204,29 @@ public class YpareoSyncService {
                     });
 
             ClassGroup classGroup = classGroupRepository.findById(dto.getCodeGroup())
-                    .orElseGet(() -> {
-                        ClassGroup newGroup = ClassGroup.builder()
-                                .id(dto.getCodeGroup())
-                                .label(dto.getShortLabel())
-                                .active(true)
-                                .dateDebut(dto.getDateDebut())
-                                .dateFin(dto.getDateFin())
-                                .formation(formation)
-                                .build();
-                        return classGroupRepository.save(newGroup);
-                    });
-
+                    .orElseGet(() -> ClassGroup.builder()
+                            .id(dto.getCodeGroup())
+                            .label(dto.getShortLabel())
+                            .active(true)
+                            .dateDebut(dto.getDateDebut())
+                            .dateFin(dto.getDateFin())
+                            .formation(formation)
+                            .build());
+            
             classGroup.setLabel(dto.getShortLabel());
             classGroup.setFormation(formation);
             classGroup.setDateDebut(dto.getDateDebut());
             classGroup.setDateFin(dto.getDateFin());
+            
+            if (!classGroup.getTrainers().contains(trainer)) {
+                classGroup.getTrainers().add(trainer);
+                trainer.getClassGroups().add(classGroup); 
+            }
+            
             classGroupRepository.save(classGroup);
         });
 
         log.info("Successfully synchronized {} groups for trainer {}", trainerGroups.size(), trainerId);
     }
+
 }

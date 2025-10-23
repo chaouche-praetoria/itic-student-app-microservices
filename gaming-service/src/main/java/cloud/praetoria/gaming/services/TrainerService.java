@@ -1,14 +1,15 @@
 package cloud.praetoria.gaming.services;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
 import cloud.praetoria.gaming.clients.YpareoProxyClient;
 import cloud.praetoria.gaming.common.FormationNormalizer;
-import cloud.praetoria.gaming.dtos.ClassGroupDto;
+import cloud.praetoria.gaming.dtos.ClassGroupSummaryDto;
 import cloud.praetoria.gaming.dtos.FormationDto;
 import cloud.praetoria.gaming.dtos.UserDto;
 import cloud.praetoria.gaming.dtos.YpareoGroupDto;
@@ -27,162 +28,118 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TrainerService {
 
-    private final UserRepository userRepository;
-    private final YpareoProxyClient ypareoClient;
-    private final ClassGroupRepository classGroupRepository;
-    private final FormationRepository formationRepository;
+	private final UserRepository userRepository;
+	private final YpareoProxyClient ypareoClient;
+	private final ClassGroupRepository classGroupRepository;
+	private final FormationRepository formationRepository;
 
-    @Transactional
-    public List<FormationDto> getTrainerFormations(Long trainerId) {
-        log.info("Getting formations for trainer ID: {}", trainerId);
+	
 
-        User trainer = userRepository.findById(trainerId)
-                .orElseThrow(() -> new RuntimeException("Trainer not found with ID: " + trainerId));
+	@Transactional
+	public List<FormationDto> getTrainerFormationsWithClassGroups(Long trainerId) {
+		log.info("Getting formations with class groups for trainer ID: {}", trainerId);
 
-        if (!trainer.isTrainer()) {
-            throw new RuntimeException("User with ID " + trainerId + " is not a trainer");
-        }
+		User trainer = userRepository.findById(trainerId)
+				.orElseThrow(() -> new RuntimeException("Trainer not found with ID: " + trainerId));
 
-        List<YpareoGroupDto> trainerGroups = ypareoClient.getGroupsByTrainer(trainerId);
+		if (!trainer.isTrainer()) {
+			throw new RuntimeException("User with ID " + trainerId + " is not a trainer");
+		}
 
-        return trainerGroups.stream()
-                .map(dto -> {
-                    String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
-                    return formationRepository.findByKeyName(formationKey)
-                            .map(this::toFormationDto)
-                            .orElse(null);
-                })
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-    }
+		List<YpareoGroupDto> trainerGroups = ypareoClient.getGroupsByTrainer(trainerId);
+		log.info("Received {} groups from Ypareo for trainer {}", trainerGroups.size(), trainerId);
 
-    @Transactional
-    public List<ClassGroupDto> getTrainerClassGroups(Long trainerId) {
-        log.info("Getting class groups for trainer ID: {}", trainerId);
+		if (trainerGroups.isEmpty()) {
+			log.warn("No groups found in Ypareo for trainer {}", trainerId);
+			return List.of();
+		}
 
-        User trainer = userRepository.findById(trainerId)
-                .orElseThrow(() -> new RuntimeException("Trainer not found with ID: " + trainerId));
-        
-        if (!trainer.isTrainer()) {
-            throw new RuntimeException("User with ID " + trainerId + " is not a trainer");
-        }
+		List<ClassGroup> savedClassGroups = trainerGroups.stream().map(dto -> {
+			log.debug("Processing Ypareo group: {} ({})", dto.getShortLabel(), dto.getCodeGroup());
 
-        List<YpareoGroupDto> trainerGroups = ypareoClient.getGroupsByTrainer(trainerId);
+			String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
 
-        List<ClassGroup> savedClassGroups = trainerGroups.stream()
-                .map(dto -> {
-                    String formationKey = FormationNormalizer.normalize(dto.getLabel(), dto.getShortLabel());
+			Formation formation = formationRepository.findByKeyName(formationKey).orElseGet(() -> {
+				log.info("Creating new formation: {}", formationKey);
+				Formation newFormation = new Formation();
+				newFormation.setKeyName(formationKey);
+				newFormation.setDisplayName(dto.getLabel() != null ? dto.getLabel() : formationKey);
+				newFormation.setYpareoFormationCode(dto.getCodeGroup());
+				return formationRepository.save(newFormation);
+			});
 
-                    Formation formation = formationRepository.findByKeyName(formationKey)
-                            .orElseGet(() -> {
-                                Formation newFormation = new Formation();
-                                newFormation.setKeyName(formationKey);
-                                newFormation.setDisplayName(dto.getLabel() != null ? dto.getLabel() : formationKey);
-                                newFormation.setYpareoFormationCode(dto.getCodeGroup());
-                                return formationRepository.save(newFormation);
-                            });
+			ClassGroup classGroup = classGroupRepository.findById(dto.getCodeGroup()).orElseGet(() -> {
+				log.info("Creating new class group: {} ({})", dto.getShortLabel(), dto.getCodeGroup());
+				ClassGroup newGroup = ClassGroup.builder().id(dto.getCodeGroup()).label(dto.getShortLabel())
+						.active(true).dateDebut(dto.getDateDebut()).dateFin(dto.getDateFin()).formation(formation)
+						.build();
+				return classGroupRepository.save(newGroup);
+			});
 
-                    ClassGroup classGroup = classGroupRepository.findById(dto.getCodeGroup())
-                            .orElseGet(() -> {
-                                ClassGroup newGroup = ClassGroup.builder()
-                                        .id(dto.getCodeGroup())
-                                        .label(dto.getShortLabel())
-                                        .active(true)
-                                        .dateDebut(dto.getDateDebut())
-                                        .dateFin(dto.getDateFin())
-                                        .formation(formation)
-                                        .build();
-                                return classGroupRepository.save(newGroup);
-                            });
+			classGroup.setLabel(dto.getShortLabel());
+			classGroup.setFormation(formation);
+			classGroup.setDateDebut(dto.getDateDebut());
+			classGroup.setDateFin(dto.getDateFin());
+			classGroup.setActive(true); 
 
-                    classGroup.setLabel(dto.getShortLabel());
-                    classGroup.setFormation(formation);
-                    classGroup.setDateDebut(dto.getDateDebut());
-                    classGroup.setDateFin(dto.getDateFin());
+			return classGroupRepository.save(classGroup);
+		}).collect(Collectors.toList());
 
-                    return classGroupRepository.save(classGroup);
-                })
-                .collect(Collectors.toList());
+		log.info("Saved {} class groups", savedClassGroups.size());
 
-        for (ClassGroup classGroup : savedClassGroups) {
-            if (!trainer.getClassGroups().contains(classGroup)) {
-                trainer.getClassGroups().add(classGroup);
-                classGroup.getTrainers().add(trainer);
-            }
-        }
-        
-        userRepository.save(trainer);
-        
-        log.info("Linked {} class groups to trainer {}", savedClassGroups.size(), trainerId);
+		for (ClassGroup classGroup : savedClassGroups) {
+			if (!trainer.getClassGroups().contains(classGroup)) {
+				trainer.getClassGroups().add(classGroup);
+				classGroup.getTrainers().add(trainer);
+			}
+		}
+		userRepository.save(trainer);
+		log.info("Linked {} class groups to trainer {}", savedClassGroups.size(), trainerId);
 
-        return savedClassGroups.stream()
-                .map(this::toClassGroupDto)
-                .collect(Collectors.toList());
-    }
+		Map<Long, List<ClassGroup>> classGroupsByFormation = savedClassGroups.stream()
+				.collect(Collectors.groupingBy(cg -> cg.getFormation().getId()));
 
-    @Transactional
-    public List<UserDto> getFormationStudents(Long formationId) {
-        log.info("Getting all students for formation ID: {}", formationId);
-        
-        Formation formation = formationRepository.findById(formationId)
-            .orElseThrow(() -> new RuntimeException("Formation not found with ID: " + formationId));
-        
-        List<ClassGroup> classGroups = formation.getClasses();
-        
-        if (classGroups.isEmpty()) {
-            log.warn("No class groups found for formation {}", formationId);
-            return List.of();
-        }
-        
-        List<Long> classGroupIds = classGroups.stream()
-            .map(ClassGroup::getId)
-            .collect(Collectors.toList());
-        
-        log.info("Found {} class groups for formation {}: {}", 
-                 classGroups.size(), formationId, classGroupIds);
-        
-        List<User> students = userRepository.findStudentsByClassGroupIds(classGroupIds);
-        
-        log.info("Found {} students in formation {}", students.size(), formationId);
-        
-        return students.stream()
-            .map(this::toUserDto)
-            .collect(Collectors.toList());
-    }
+		log.info("Grouped class groups into {} formations", classGroupsByFormation.size());
 
-    private FormationDto toFormationDto(Formation formation) {
-        return FormationDto.builder()
-                .id(formation.getId())
-                .keyName(formation.getKeyName())
-                .displayName(formation.getDisplayName())
-                .ypareoFormationCode(formation.getYpareoFormationCode())
-                .build();
-    }
+		List<FormationDto> formationDtos = classGroupsByFormation.entrySet().stream().map(entry -> {
+			List<ClassGroup> classGroups = entry.getValue();
 
-    private ClassGroupDto toClassGroupDto(ClassGroup classGroup) {
-        FormationDto formationDto = null;
-        if (classGroup.getFormation() != null) {
-            formationDto = toFormationDto(classGroup.getFormation());
-        }
-        return ClassGroupDto.builder()
-                .id(classGroup.getId())
-                .label(classGroup.getLabel())
-                .dateDebut(classGroup.getDateDebut())
-                .dateFin(classGroup.getDateFin())
-                .active(classGroup.isActive())
-                .formation(formationDto)
-                .build();
-    }
-    
-    private UserDto toUserDto(User user) {
-        return UserDto.builder()
-            .id(user.getId())
-            .firstName(user.getFirstName())
-            .lastName(user.getLastName())
-            .fullName(user.getFullName())
-            .points(user.getPoints())
-            .active(user.getActive())
-            .build();
-    }
+			Formation formation = classGroups.get(0).getFormation();
+			log.debug("Building DTO with {} class groups", classGroups.size());
+			List<ClassGroupSummaryDto> classGroupSummaries = classGroups.stream()
+				    .map(cg ->
+				        ClassGroupSummaryDto.builder()
+				            .id(cg.getId())
+				            .label(cg.getLabel())
+				            .totalStudents((int) cg.getStudents().stream()
+				                .filter(student -> !student.isTrainer())
+				                .count())
+				            .build()
+				    )
+				    .collect(Collectors.toList());
+
+				int totalStudents = classGroups.stream()
+				    .mapToInt(cg -> (int) cg.getStudents().stream()
+				        .filter(student -> !student.isTrainer())
+				        .count())
+				    .sum();
+			boolean isActive = classGroups.stream().anyMatch(ClassGroup::isActive);
+
+			LocalDate dateDebut = classGroups.get(0).getDateDebut();
+			LocalDate dateFin = classGroups.get(0).getDateFin();
+
+			return FormationDto.builder().id(formation.getId())
+					.displayName(formation.getDisplayName())
+					.totalStudents(totalStudents).dateDebut(dateDebut).dateFin(dateFin).active(isActive)
+					.classGroups(classGroupSummaries).build();
+		}).collect(Collectors.toList());
+
+		log.info("Returning {} formations with class groups for trainer {}", formationDtos.size(), trainerId);
+		return formationDtos;
+	}
+
+	private UserDto toUserDto(User user) {
+		return UserDto.builder().id(user.getId()).firstName(user.getFirstName()).lastName(user.getLastName())
+				.fullName(user.getFullName()).points(user.getPoints()).active(user.getActive()).build();
+	}
 }

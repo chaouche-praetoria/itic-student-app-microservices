@@ -1,12 +1,16 @@
 package cloud.praetoria.gaming.dtos;
 
+import java.time.LocalDate;
+
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-
-import java.time.LocalDate;
+import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ClassGroupDto {
     private Long id;
     private String label;

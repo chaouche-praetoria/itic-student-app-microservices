@@ -8,4 +8,5 @@ import cloud.praetoria.gaming.entities.ClassGroup;
 
 public interface ClassGroupRepository extends JpaRepository<ClassGroup, Long> {
     List<ClassGroup> findByActiveTrue();
+
 }

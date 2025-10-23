@@ -20,11 +20,17 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Data
+@Builder
 @Table(name = "assignments")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Assignment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -46,6 +52,9 @@ public class Assignment {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
     private LocalDateTime dueDate;
 
     @Column(nullable = false)
@@ -59,18 +68,24 @@ public class Assignment {
     private User creator;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "class_id", nullable = false)
-    private ClassGroup classGroup;
+    @JoinColumn(name = "formation_id", nullable = false)
+    private Formation formation;
 
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL)
     private List<PointsAward> pointsAwards = new ArrayList<>();
 
     @PrePersist
-    @PreUpdate
-    public void validateCreator() {
-        if (!creator.isTrainer()) {
+    public void onCreate() {
+        if (creator == null || !creator.isTrainer()) {
             throw new IllegalArgumentException("Only a trainer can create an assignment");
         }
+        if (createdAt == null) createdAt = LocalDateTime.now();
+        updatedAt = createdAt;
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
 }

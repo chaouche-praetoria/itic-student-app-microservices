@@ -32,5 +32,8 @@ public class Formation {
 
     @OneToMany(mappedBy = "formation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ClassGroup> classes = new ArrayList<>();
+    
+    @OneToMany(mappedBy = "formation", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Assignment> assignments = new ArrayList<>();
 
 }
