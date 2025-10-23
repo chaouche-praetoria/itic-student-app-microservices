@@ -107,12 +107,22 @@ public class TrainerService {
 			Formation formation = classGroups.get(0).getFormation();
 			log.debug("Building DTO with {} class groups", classGroups.size());
 			List<ClassGroupSummaryDto> classGroupSummaries = classGroups.stream()
-					.map(cg ->
-					ClassGroupSummaryDto.builder().id(cg.getId()).label(cg.getLabel())
-							.totalStudents(cg.getStudents().size()).build())
-					.collect(Collectors.toList());
+				    .map(cg ->
+				        ClassGroupSummaryDto.builder()
+				            .id(cg.getId())
+				            .label(cg.getLabel())
+				            .totalStudents((int) cg.getStudents().stream()
+				                .filter(student -> !student.isTrainer())
+				                .count())
+				            .build()
+				    )
+				    .collect(Collectors.toList());
 
-			int totalStudents = classGroups.stream().mapToInt(cg -> cg.getStudents().size()).sum();
+				int totalStudents = classGroups.stream()
+				    .mapToInt(cg -> (int) cg.getStudents().stream()
+				        .filter(student -> !student.isTrainer())
+				        .count())
+				    .sum();
 			boolean isActive = classGroups.stream().anyMatch(ClassGroup::isActive);
 
 			LocalDate dateDebut = classGroups.get(0).getDateDebut();
