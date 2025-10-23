@@ -9,9 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import cloud.praetoria.gaming.dtos.FormationDto;
+import cloud.praetoria.gaming.dtos.FormationWithStudentDto;
 import cloud.praetoria.gaming.dtos.UserDto;
 import cloud.praetoria.gaming.services.FormationService;
-import cloud.praetoria.gaming.services.TrainerService;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +27,11 @@ public class FormationController {
     public ResponseEntity<List<UserDto>> getFormationStudents(@PathVariable Long formationId) {
         List<UserDto> students = formationService.getStudentsFormation(formationId);
         return ResponseEntity.ok(students);
+    }
+    @GetMapping("/{formationId}/all")
+    public ResponseEntity<FormationWithStudentDto> getFormationWithStudents(@PathVariable Long formationId) {
+    	FormationWithStudentDto formation = formationService.getFormationWithStudents(formationId);
+    	return ResponseEntity.ok(formation);
     }
     
     @Operation(summary = "Lister les formations d'un formateur")
