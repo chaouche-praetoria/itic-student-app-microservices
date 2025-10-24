@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import cloud.praetoria.gaming.dtos.FormationDto;
+import cloud.praetoria.gaming.dtos.FormationWithStudentDto;
 import cloud.praetoria.gaming.dtos.UserDto;
 import cloud.praetoria.gaming.entities.ClassGroup;
 import cloud.praetoria.gaming.entities.Formation;
@@ -61,6 +62,46 @@ public class FormationService {
 
 		return students.stream().map(this::toUserDto).collect(Collectors.toList());
 	}
+    @Transactional
+    public FormationWithStudentDto getFormationWithStudents(Long formationId) {
+        log.info("Getting formation with all students for formation ID: {}", formationId);
+
+        Formation formation = formationRepository.findById(formationId)
+                .orElseThrow(() -> new RuntimeException("Formation not found with ID: " + formationId));
+
+        List<ClassGroup> classGroups = formation.getClasses();
+
+        if (classGroups.isEmpty()) {
+            log.warn("No class groups found for formation {}", formationId);
+            return FormationWithStudentDto.builder()
+                    .id(formation.getId())
+                    .displayName(formation.getDisplayName())
+                    .totalStudents(0)
+                    .students(List.of())
+                    .build();
+        }
+
+        List<Long> classGroupIds = classGroups.stream()
+                .map(ClassGroup::getId)
+                .collect(Collectors.toList());
+
+        log.info("Found {} class groups for formation {}: {}", classGroups.size(), formationId, classGroupIds);
+
+        List<User> students = userRepository.findStudentsByClassGroupIds(classGroupIds);
+
+        log.info("Found {} students in formation {}", students.size(), formationId);
+
+        List<UserDto> studentDtos = students.stream()
+                .map(this::toUserDto)
+                .collect(Collectors.toList());
+
+        return FormationWithStudentDto.builder()
+                .id(formation.getId())
+                .displayName(formation.getDisplayName())
+                .totalStudents(students.size())
+                .students(studentDtos)
+                .build();
+    }
 
     @Transactional(readOnly = true)
     public List<FormationDto> getAllFormations() {
@@ -87,5 +128,13 @@ public class FormationService {
             .points(user.getPoints())
             .active(user.getActive())
             .build();
+    }
+    private FormationWithStudentDto toFormationUsersDto(User user, Formation formation) {
+    	return FormationWithStudentDto.builder()
+    			.id(user.getId())
+    			.displayName(formation.getDisplayName())
+    			.totalStudents(formation.getClasses().size())
+    			
+    			.build();
     }
 }

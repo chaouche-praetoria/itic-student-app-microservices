@@ -18,7 +18,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping
+@RequestMapping("/assignments")
 @RequiredArgsConstructor
 @Validated
 @io.swagger.v3.oas.annotations.tags.Tag(name = "Assignments")
@@ -28,7 +28,7 @@ public class AssignmentController {
 
     @Operation(summary = "Créer un devoir")
     @ApiResponse(responseCode = "201", content = @Content(schema = @Schema(implementation = AssignmentDto.class)))
-    @PostMapping("/assignments")
+    @PostMapping("/new")
     public ResponseEntity<AssignmentDto> create(@Valid @RequestBody AssignmentCreateRequestDto request) {
         AssignmentDto dto = assignmentServiceInterface.create(request);
         URI location = URI.create("/assignments/" + dto.getId());
@@ -38,14 +38,14 @@ public class AssignmentController {
     @Operation(summary = "Récupérer un devoir par ID")
     @ApiResponse(responseCode = "200")
     @ApiResponse(responseCode = "404", description = "Devoir introuvable")
-    @GetMapping("/assignments/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<AssignmentDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(assignmentServiceInterface.getById(id));
     }
 
     @Operation(summary = "Lister les devoirs d'une formation")
     @ApiResponse(responseCode = "200")
-    @GetMapping("/formations/{formationId}/assignments")
+    @GetMapping("/{formationId}/all")
     public ResponseEntity<List<AssignmentDto>> listByFormation(
             @Parameter(description = "ID de la formation") @PathVariable Long formationId) {
         return ResponseEntity.ok(assignmentServiceInterface.listByFormation(formationId));
